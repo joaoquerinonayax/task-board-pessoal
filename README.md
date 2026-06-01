@@ -3,7 +3,9 @@
 Quadro de tarefas (Kanban / Tabela / Cards / Calendário) que roda 100% no navegador,
 hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grátis).
 
-- 🗂️ Quatro visões: **Kanban**, **Tabela**, **Cards** e **Calendário**
+- 🗂️ Cinco visões: **Kanban**, **Tabela**, **Cards**, **Calendário** e **Notas** (Markdown)
+- 🌐 **Inglês por padrão**, com troca para **PT-BR** em um clique (login e menu de conta)
+- 📝 **Notas em Markdown** com preview ao vivo e **geração de tarefas** a partir da nota
 - 🔐 Login por **e-mail + senha** — os dados ficam protegidos por usuário (RLS)
 - ☁️ **Sync na nuvem** com cache local (abre rápido e aguenta ficar offline por um tempo)
 - ⚡ **Tempo real**: mudou num dispositivo, aparece nos outros abertos
@@ -41,6 +43,8 @@ moram no **seu** banco Supabase, atrás de login.
 1. No projeto, vá em **SQL Editor → New query**.
 2. Cole todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) e clique em **Run**.
    - Cria as tabelas `columns`, `groups`, `tasks`, ativa **RLS** e o **Realtime**.
+3. **Para a aba de Notas:** abra outra query, cole [`supabase/notes.sql`](supabase/notes.sql) e **Run**.
+   - Cria a tabela `notes`. Sem isso, as notas funcionam **só localmente** (o app mostra um aviso).
 
 ### 3. Desligue a confirmação de e-mail (recomendado p/ uso pessoal)
 Assim você cria a conta e já entra, sem precisar clicar num link de e-mail.
@@ -161,7 +165,14 @@ No dashboard do Supabase: **Authentication → Users** → você pode enviar res
 index.html          App (marcação)
 styles.css          Estilos
 app.js              Lógica (UI + Supabase + realtime + calendário)
-config.js           SUA URL + anon key do Supabase   ← edite aqui
+config.js           SUA URL + publishable key do Supabase   ← edite aqui
 config.example.js   Modelo do config.js
-supabase/schema.sql SQL para criar tabelas + RLS + realtime
+favicon.svg         Ícone da aba do navegador
+supabase/schema.sql SQL: tabelas (columns/groups/tasks) + RLS + realtime
+supabase/notes.sql  SQL: tabela de notas (rode depois do schema.sql)
 ```
+
+## Idioma
+
+O app abre em **inglês**. Para mudar para português, use o toggle **EN / PT-BR**
+na tela de login ou no menu de conta (avatar → Idioma). A preferência fica salva.
