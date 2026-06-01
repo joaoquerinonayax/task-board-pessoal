@@ -38,12 +38,16 @@ let pullTimer = null;
 let pendingSave = false;
 let lastPushAt = 0;
 let rtChannel = null;
-const dirty = { tasks: false, columns: false, groups: false };
+const dirty = { tasks: false, columns: false, groups: false, notes: false };
 let seenCols = new Set();
 let seenGroups = new Set();
 let dragIndicator = null;        // card drop placeholder
 let dragTarget = { colId: null, beforeCardId: null };
 let columnDragId = null;         // id of column being dragged
+// Notes
+let notes = [];
+let activeNoteId = null;
+let notesTableMissing = false;
 
 let filters = {
   priorities: new Set(PRIORITIES),
@@ -57,6 +61,116 @@ const PALETTE = [
   '#6161ff', '#ff6b9d', '#00bcd4', '#9c27b0',
   '#607d8b', '#34495e', '#16a085', '#d35400'
 ];
+
+// ============================================================
+//  i18n  (English by default, Portuguese optional)
+// ============================================================
+const STORE_LANG = 'tb_lang';
+let lang = 'en';
+const I18N = {
+  en: {
+    'app.title':'João Querino Task Board',
+    'auth.welcome':'Welcome back','auth.welcomeSub':'Sign in to access your board',
+    'auth.createTitle':'Create your account','auth.createSub':'Fill in to create your access',
+    'auth.email':'E-mail','auth.password':'Password','auth.signin':'Sign in','auth.create':'Create account',
+    'auth.toSignin':'I already have an account — sign in','auth.toCreate':'Create account',
+    'auth.noAccount':"Don't have an account?",'auth.loading':'Loading…',
+    'auth.restricted':'🔒 Restricted access — ask the administrator for access.',
+    'auth.configError':'⚠️ Supabase not configured. Edit config.js with your project URL and key (see README.md).',
+    'auth.featKanban':'⊞ Kanban','auth.featCalendar':'📅 Calendar','auth.featRealtime':'⚡ Real-time',
+    'auth.created':'Account created! Confirm via e-mail OR disable "Confirm email" in Supabase, then sign in.',
+    'auth.errInvalid':'Wrong e-mail or password.','auth.errExists':'This e-mail already has an account. Sign in.',
+    'auth.errWeak':'Password must be at least 6 characters.','auth.errUnconfirmed':'E-mail not confirmed. Use the link or disable confirmation in Supabase.',
+    'auth.errSignupOff':'Sign-ups are disabled. Ask the administrator for access.','auth.errRate':'Too many attempts. Wait a moment and try again.','auth.errGeneric':'Something went wrong. Try again.',
+    'tb.export':'⤓ Export ▾','tb.exportJson':'⤓ Export as JSON','tb.exportCsv':'⤓ Export as CSV','tb.import':'⤒ Import JSON',
+    'tb.addTask':'+ Add Task','tb.theme':'Toggle light/dark theme','tb.sync':'Sync status','tb.account':'Account','tb.menu':'Menu',
+    'acct.sync':'⟳ Sync now','acct.signout':'⎋ Sign out','acct.language':'Language',
+    'view.kanban':'⊞ Kanban','view.table':'☰ Table','view.cards':'▦ Cards','view.calendar':'📅 Calendar','view.notes':'📝 Notes',
+    'sb.search':'Search tasks...','sb.sortBy':'Sort by','sb.filter':'⏷ Filter','sb.group':'⊟ Group','sb.groupTitle':'Group tasks',
+    'sort.manual':'Manual','sort.created':'Newest','sort.deadline':'Deadline','sort.priority':'Priority','sort.title':'Title (A–Z)',
+    'side.addTask':'Add Task','side.taskName':'Task name','side.desc':'Description','side.priority':'Priority','side.deadline':'Deadline','side.column':'Column','side.addToBoard':'+ Add to Board','side.overview':'Overview','side.addColumn':'+ Add column','side.groups':'Groups','side.addGroup':'+ Add group',
+    'prio.Critical':'Critical','prio.High':'High','prio.Medium':'Medium','prio.Low':'Low',
+    'col.empty':'☁ No tasks here','col.addTask':'+ Add task','col.edit':'Edit column',
+    'card.moveLeft':'Move left','card.moveRight':'Move right','card.edit':'Edit','card.delete':'Delete',
+    'empty.noMatch':'No tasks match your filters.','groups.empty':'No groups yet.','group.edit':'Edit group','group.none':'No group',
+    'dl.today':'Today','dl.tomorrow':'Tomorrow',
+    'th.task':'Task','th.priority':'Priority','th.deadline':'Deadline','th.status':'Status','th.added':'Added',
+    'cal.prev':'Previous month','cal.next':'Next month','cal.today':'Today','cal.noDeadline':'without deadline',
+    'm.newTask':'New task','m.editTask':'Edit task','m.taskName':'Task name','m.desc':'Description','m.priority':'Priority','m.deadline':'Deadline','m.column':'Column','m.group':'Group','m.noGroup':'— No group —','m.subtasks':'Subtasks','m.addSubtask':'+ Add subtask','m.noSubtasks':'No subtasks yet.','m.subPlaceholder':'Subtask...','m.cancel':'Cancel','m.save':'Save','m.remove':'Remove','m.of':'of','m.done':'done',
+    'c.newCol':'New column','c.editCol':'Edit column','c.name':'Name','c.color':'Color','c.delete':'Delete column','c.cantDeleteLast':"You can't delete the last remaining column.",
+    'c.confirmDel':'Delete "{name}"?','c.confirmDelMove':'Delete "{name}"?\n\n{n} task(s) will be moved to "{other}".',
+    'g.newGroup':'New group','g.editGroup':'Edit group','g.delete':'Delete group','g.confirmDel':'Delete group "{name}"?','g.confirmDelTasks':'\n\n{n} task(s) will become ungrouped.',
+    'f.priority':'Priority','f.status':'Status','f.group':'Group','f.deadline':'Deadline','f.any':'Any','f.overdue':'Overdue','f.next7':'Due in next 7 days','f.later':'Due later','f.none':'No deadline','f.noGroup':'No group','f.clear':'Clear filters','f.done':'Done',
+    'rt.bold':'Bold (Ctrl+B)','rt.italic':'Italic (Ctrl+I)','rt.underline':'Underline','rt.h1':'Heading','rt.h2':'Subheading','rt.ul':'List','rt.ol':'Numbered list','rt.red':'Red','rt.orange':'Orange','rt.green':'Green','rt.blue':'Blue','rt.purple':'Purple','rt.link':'Insert link','rt.clear':'Clear formatting','rt.linkPrompt':'Link URL:','rt.placeholder':'Add a detailed description… (supports # heading, - list, **bold**)',
+    'sync.idle':'Offline — changes saved on this device only','sync.saving':'Saving…','sync.synced':'All synced','sync.error':'Sync error — we will retry',
+    'confirm.delTask':'Delete "{name}"?','confirm.signout':'Sign out? Your data stays saved in Supabase.',
+    'import.invalid':'Invalid JSON file — "tasks" field not found.','import.confirm':'Import {n} tasks? This replaces your current data.','import.error':'Error reading file: ',
+    'notes.new':'+ New note','notes.empty':'No notes yet.','notes.untitled':'Untitled note','notes.titlePh':'Note title','notes.contentPh':'Write in Markdown…','notes.delete':'Delete note','notes.gen':'⚡ Generate tasks','notes.select':'Select a note or create a new one.','notes.deleteConfirm':'Delete this note?','notes.tableMissing':'⚠ One-time setup needed: run supabase/notes.sql in your Supabase SQL Editor to sync notes to the cloud. (Notes are cached locally meanwhile.)',
+    'gen.title':'Generate tasks from note','gen.none':'No list items found. Use "- item" bullets or "- [ ] item" checkboxes in your note.','gen.column':'Target column','gen.cancel':'Cancel','gen.create':'Create tasks',
+  },
+  'pt-BR': {
+    'app.title':'João Querino Task Board',
+    'auth.welcome':'Bem-vindo de volta','auth.welcomeSub':'Entre para acessar seu quadro',
+    'auth.createTitle':'Criar sua conta','auth.createSub':'Preencha para criar seu acesso',
+    'auth.email':'E-mail','auth.password':'Senha','auth.signin':'Entrar','auth.create':'Criar conta',
+    'auth.toSignin':'Já tenho conta — entrar','auth.toCreate':'Criar conta',
+    'auth.noAccount':'Não tem conta?','auth.loading':'Carregando…',
+    'auth.restricted':'🔒 Acesso restrito — peça acesso ao administrador.',
+    'auth.configError':'⚠️ Supabase não configurado. Edite o config.js com a URL e a key do projeto (veja o README.md).',
+    'auth.featKanban':'⊞ Kanban','auth.featCalendar':'📅 Calendário','auth.featRealtime':'⚡ Tempo real',
+    'auth.created':'Conta criada! Confirme pelo e-mail OU desative "Confirm email" no Supabase e entre.',
+    'auth.errInvalid':'E-mail ou senha incorretos.','auth.errExists':'Esse e-mail já tem conta. Faça login.',
+    'auth.errWeak':'A senha precisa de pelo menos 6 caracteres.','auth.errUnconfirmed':'E-mail não confirmado. Use o link ou desative a confirmação no Supabase.',
+    'auth.errSignupOff':'Cadastros estão desativados. Peça acesso ao administrador.','auth.errRate':'Muitas tentativas. Espere um momento e tente de novo.','auth.errGeneric':'Algo deu errado. Tente de novo.',
+    'tb.export':'⤓ Exportar ▾','tb.exportJson':'⤓ Exportar como JSON','tb.exportCsv':'⤓ Exportar como CSV','tb.import':'⤒ Importar JSON',
+    'tb.addTask':'+ Nova tarefa','tb.theme':'Alternar tema claro/escuro','tb.sync':'Status de sincronização','tb.account':'Conta','tb.menu':'Menu',
+    'acct.sync':'⟳ Sincronizar agora','acct.signout':'⎋ Sair','acct.language':'Idioma',
+    'view.kanban':'⊞ Kanban','view.table':'☰ Tabela','view.cards':'▦ Cartões','view.calendar':'📅 Calendário','view.notes':'📝 Notas',
+    'sb.search':'Buscar tarefas...','sb.sortBy':'Ordenar por','sb.filter':'⏷ Filtrar','sb.group':'⊟ Agrupar','sb.groupTitle':'Agrupar tarefas',
+    'sort.manual':'Manual','sort.created':'Mais recentes','sort.deadline':'Prazo','sort.priority':'Prioridade','sort.title':'Título (A–Z)',
+    'side.addTask':'Nova tarefa','side.taskName':'Nome da tarefa','side.desc':'Descrição','side.priority':'Prioridade','side.deadline':'Prazo','side.column':'Coluna','side.addToBoard':'+ Adicionar ao quadro','side.overview':'Visão geral','side.addColumn':'+ Adicionar coluna','side.groups':'Grupos','side.addGroup':'+ Adicionar grupo',
+    'prio.Critical':'Crítica','prio.High':'Alta','prio.Medium':'Média','prio.Low':'Baixa',
+    'col.empty':'☁ Nenhuma tarefa aqui','col.addTask':'+ Nova tarefa','col.edit':'Editar coluna',
+    'card.moveLeft':'Mover para a esquerda','card.moveRight':'Mover para a direita','card.edit':'Editar','card.delete':'Excluir',
+    'empty.noMatch':'Nenhuma tarefa corresponde aos filtros.','groups.empty':'Nenhum grupo ainda.','group.edit':'Editar grupo','group.none':'Sem grupo',
+    'dl.today':'Hoje','dl.tomorrow':'Amanhã',
+    'th.task':'Tarefa','th.priority':'Prioridade','th.deadline':'Prazo','th.status':'Status','th.added':'Criada',
+    'cal.prev':'Mês anterior','cal.next':'Próximo mês','cal.today':'Hoje','cal.noDeadline':'sem prazo',
+    'm.newTask':'Nova tarefa','m.editTask':'Editar tarefa','m.taskName':'Nome da tarefa','m.desc':'Descrição','m.priority':'Prioridade','m.deadline':'Prazo','m.column':'Coluna','m.group':'Grupo','m.noGroup':'— Sem grupo —','m.subtasks':'Subtarefas','m.addSubtask':'+ Nova subtarefa','m.noSubtasks':'Nenhuma subtarefa ainda.','m.subPlaceholder':'Subtarefa...','m.cancel':'Cancelar','m.save':'Salvar','m.remove':'Remover','m.of':'de','m.done':'concluídas',
+    'c.newCol':'Nova coluna','c.editCol':'Editar coluna','c.name':'Nome','c.color':'Cor','c.delete':'Excluir coluna','c.cantDeleteLast':'Você não pode excluir a última coluna.',
+    'c.confirmDel':'Excluir "{name}"?','c.confirmDelMove':'Excluir "{name}"?\n\n{n} tarefa(s) serão movidas para "{other}".',
+    'g.newGroup':'Novo grupo','g.editGroup':'Editar grupo','g.delete':'Excluir grupo','g.confirmDel':'Excluir o grupo "{name}"?','g.confirmDelTasks':'\n\n{n} tarefa(s) ficarão sem grupo.',
+    'f.priority':'Prioridade','f.status':'Status','f.group':'Grupo','f.deadline':'Prazo','f.any':'Qualquer','f.overdue':'Atrasada','f.next7':'Vence em 7 dias','f.later':'Vence depois','f.none':'Sem prazo','f.noGroup':'Sem grupo','f.clear':'Limpar filtros','f.done':'Pronto',
+    'rt.bold':'Negrito (Ctrl+B)','rt.italic':'Itálico (Ctrl+I)','rt.underline':'Sublinhado','rt.h1':'Título','rt.h2':'Subtítulo','rt.ul':'Lista','rt.ol':'Lista numerada','rt.red':'Vermelho','rt.orange':'Laranja','rt.green':'Verde','rt.blue':'Azul','rt.purple':'Roxo','rt.link':'Inserir link','rt.clear':'Limpar formatação','rt.linkPrompt':'URL do link:','rt.placeholder':'Adicione uma descrição detalhada… (aceita # título, - lista, **negrito**)',
+    'sync.idle':'Offline — alterações salvas só neste dispositivo','sync.saving':'Salvando…','sync.synced':'Tudo sincronizado','sync.error':'Erro de sincronização — vamos tentar de novo',
+    'confirm.delTask':'Excluir "{name}"?','confirm.signout':'Sair da sua conta? Os dados continuam salvos no Supabase.',
+    'import.invalid':'Arquivo JSON inválido — campo "tasks" não encontrado.','import.confirm':'Importar {n} tarefas? Isso substitui os dados atuais.','import.error':'Erro ao ler arquivo: ',
+    'notes.new':'+ Nova nota','notes.empty':'Nenhuma nota ainda.','notes.untitled':'Nota sem título','notes.titlePh':'Título da nota','notes.contentPh':'Escreva em Markdown…','notes.delete':'Excluir nota','notes.gen':'⚡ Gerar tarefas','notes.select':'Selecione uma nota ou crie uma nova.','notes.deleteConfirm':'Excluir esta nota?','notes.tableMissing':'⚠ Configuração única: rode supabase/notes.sql no SQL Editor do Supabase para sincronizar as notas na nuvem. (As notas ficam salvas localmente enquanto isso.)',
+    'gen.title':'Gerar tarefas da nota','gen.none':'Nenhum item de lista encontrado. Use marcadores "- item" ou caixas "- [ ] item" na nota.','gen.column':'Coluna destino','gen.cancel':'Cancelar','gen.create':'Criar tarefas',
+  },
+};
+I18N.en.weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+I18N['pt-BR'].weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
+function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
+function prioLabel(p) { return tr('prio.' + p); }
+function loadLang() { const l = localStorage.getItem(STORE_LANG); lang = (l === 'pt-BR' || l === 'en') ? l : 'en'; }
+function setLang(l) { lang = (l === 'pt-BR') ? 'pt-BR' : 'en'; localStorage.setItem(STORE_LANG, lang); applyI18n(); }
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', tr(el.getAttribute('data-i18n-ph'))); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', tr(el.getAttribute('data-i18n-title'))); });
+  document.querySelectorAll('[data-setlang]').forEach(b => b.classList.toggle('active', b.getAttribute('data-setlang') === lang));
+  document.documentElement.lang = lang;
+  document.title = tr('app.title');
+}
+function applyI18n() {
+  applyStaticI18n();
+  const authScreen = document.getElementById('auth-screen');
+  if (authScreen && !authScreen.hidden) setAuthMode(authMode);
+  if (USER_ID) { refreshColumnSelects(); renderBoard(); }
+}
+
 
 // ============================================================
 //  Defaults + seed
@@ -92,6 +206,7 @@ function loadFromCache() {
   const g = cacheGet('groups');  groups  = Array.isArray(g) ? g : [];
   const t = cacheGet('tasks');   tasks   = Array.isArray(t) ? t : [];
   tasks.forEach(x => { if (!Array.isArray(x.subtasks)) x.subtasks = []; if (x.group === undefined) x.group = ''; });
+  const n = cacheGet('notes'); notes = Array.isArray(n) ? n : [];
 }
 
 function getGroup(id) { return groups.find(g => g.id === id); }
@@ -100,6 +215,7 @@ function getGroup(id) { return groups.find(g => g.id === id); }
 function saveColumns() { cacheSet('columns', columns); scheduleCloudSave('columns'); }
 function saveGroups()  { cacheSet('groups',  groups);  scheduleCloudSave('groups'); }
 function saveTasks()   { cacheSet('tasks',   tasks);   scheduleCloudSave('tasks'); }
+function saveNotes()   { cacheSet('notes',   notes);   scheduleCloudSave('notes'); }
 
 function loadGroupBy() { groupBy = localStorage.getItem(STORE_GROUPBY) === '1'; }
 function saveGroupBy() { localStorage.setItem(STORE_GROUPBY, groupBy ? '1' : '0'); }
@@ -111,7 +227,7 @@ function saveCollapsed() { localStorage.setItem(STORE_COLLAPSED, JSON.stringify(
 
 function loadView() {
   const v = localStorage.getItem(STORE_VIEW);
-  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar') currentView = v;
+  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes') currentView = v;
 }
 function saveView() { localStorage.setItem(STORE_VIEW, currentView); }
 
@@ -150,7 +266,7 @@ function stripHtml(html) {
   return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
 }
 function sanitizeHtml(html) {
-  const ALLOWED = new Set(['B','STRONG','I','EM','U','H1','H2','H3','UL','OL','LI','P','BR','SPAN','A','DIV','BLOCKQUOTE','FONT']);
+  const ALLOWED = new Set(['B','STRONG','I','EM','U','H1','H2','H3','H4','H5','H6','UL','OL','LI','P','BR','SPAN','A','DIV','BLOCKQUOTE','FONT','CODE','PRE','HR','TABLE','THEAD','TBODY','TR','TD','TH','S','DEL']);
   const tmp = document.createElement('div');
   tmp.innerHTML = html || '';
   (function clean(node) {
@@ -222,7 +338,7 @@ function setupRichEditor(editor, toolbar) {
       if (currentBlockTag() === tag) document.execCommand('formatBlock', false, '<div>');
       else document.execCommand('formatBlock', false, '<' + btn.dataset.block + '>');
     } else if (btn.dataset.link) {
-      const url = prompt('URL do link:');
+      const url = prompt(tr('rt.linkPrompt'));
       if (url) document.execCommand('createLink', false, url);
     }
   });
@@ -248,25 +364,25 @@ function setupRichEditor(editor, toolbar) {
 function richEditorMarkup(id) {
   return `
     <div class="rich-toolbar" id="${id}-toolbar">
-      <button type="button" data-cmd="bold" title="Negrito (Ctrl+B)"><b>B</b></button>
-      <button type="button" data-cmd="italic" title="Itálico (Ctrl+I)"><i>I</i></button>
-      <button type="button" data-cmd="underline" title="Sublinhado"><u>U</u></button>
+      <button type="button" data-cmd="bold" title="${escHtml(tr('rt.bold'))}"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="${escHtml(tr('rt.italic'))}"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="${escHtml(tr('rt.underline'))}"><u>U</u></button>
       <span class="rich-sep"></span>
-      <button type="button" data-block="h1" title="Título">H1</button>
-      <button type="button" data-block="h2" title="Subtítulo">H2</button>
-      <button type="button" data-cmd="insertUnorderedList" title="Lista">•</button>
-      <button type="button" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+      <button type="button" data-block="h1" title="${escHtml(tr('rt.h1'))}">H1</button>
+      <button type="button" data-block="h2" title="${escHtml(tr('rt.h2'))}">H2</button>
+      <button type="button" data-cmd="insertUnorderedList" title="${escHtml(tr('rt.ul'))}">•</button>
+      <button type="button" data-cmd="insertOrderedList" title="${escHtml(tr('rt.ol'))}">1.</button>
       <span class="rich-sep"></span>
-      <span class="rich-color" data-color="#e2445c" style="background:#e2445c" title="Vermelho"></span>
-      <span class="rich-color" data-color="#fdab3d" style="background:#fdab3d" title="Laranja"></span>
-      <span class="rich-color" data-color="#00c875" style="background:#00c875" title="Verde"></span>
-      <span class="rich-color" data-color="#579bfc" style="background:#579bfc" title="Azul"></span>
-      <span class="rich-color" data-color="#6161ff" style="background:#6161ff" title="Roxo"></span>
+      <span class="rich-color" data-color="#e2445c" style="background:#e2445c" title="${escHtml(tr('rt.red'))}"></span>
+      <span class="rich-color" data-color="#fdab3d" style="background:#fdab3d" title="${escHtml(tr('rt.orange'))}"></span>
+      <span class="rich-color" data-color="#00c875" style="background:#00c875" title="${escHtml(tr('rt.green'))}"></span>
+      <span class="rich-color" data-color="#579bfc" style="background:#579bfc" title="${escHtml(tr('rt.blue'))}"></span>
+      <span class="rich-color" data-color="#6161ff" style="background:#6161ff" title="${escHtml(tr('rt.purple'))}"></span>
       <span class="rich-sep"></span>
-      <button type="button" data-link="1" title="Inserir link">🔗</button>
-      <button type="button" data-cmd="removeFormat" title="Limpar formatação">⌫</button>
+      <button type="button" data-link="1" title="${escHtml(tr('rt.link'))}">🔗</button>
+      <button type="button" data-cmd="removeFormat" title="${escHtml(tr('rt.clear'))}">⌫</button>
     </div>
-    <div class="rich-editor" id="${id}" contenteditable="true" data-placeholder="Adicione uma descrição detalhada… (aceita # título, - lista, **negrito**)"></div>
+    <div class="rich-editor" id="${id}" contenteditable="true" data-placeholder="${escHtml(tr('rt.placeholder'))}"></div>
   `;
 }
 function subtaskCounts(t) {
@@ -284,18 +400,19 @@ function formatDeadline(dateStr, isDone) {
   if (!dateStr) return null;
   if (isDone) {
     const d = new Date(dateStr + 'T00:00:00');
-    return { text: '✓ ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), cls: 'done' };
+    return { text: '✓ ' + d.toLocaleDateString(localeFor(), { month: 'short', day: 'numeric' }), cls: 'done' };
   }
   const days = daysUntil(dateStr);
   if (days < 0) {
     const n = Math.abs(days);
-    return { text: n + ' day' + (n === 1 ? '' : 's') + ' overdue', cls: 'over' };
+    const txt = lang === 'pt-BR' ? (n + (n === 1 ? ' dia atrasada' : ' dias atrasada')) : (n + ' day' + (n === 1 ? '' : 's') + ' overdue');
+    return { text: txt, cls: 'over' };
   }
-  if (days === 0) return { text: 'Today',    cls: 'warn' };
-  if (days === 1) return { text: 'Tomorrow', cls: 'warn' };
-  if (days <= 7)  return { text: 'In ' + days + 'd', cls: 'warn' };
+  if (days === 0) return { text: tr('dl.today'),    cls: 'warn' };
+  if (days === 1) return { text: tr('dl.tomorrow'), cls: 'warn' };
+  if (days <= 7)  return { text: (lang === 'pt-BR' ? 'Em ' : 'In ') + days + 'd', cls: 'warn' };
   const d = new Date(dateStr + 'T00:00:00');
-  return { text: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), cls: '' };
+  return { text: d.toLocaleDateString(localeFor(), { month: 'short', day: 'numeric' }), cls: '' };
 }
 
 // ============================================================
@@ -373,9 +490,11 @@ function subtaskChipHtml(t) {
 function renderBoard() {
   const board = document.getElementById('board');
   board.className = 'board view-' + currentView + ((groupBy && currentView === 'cards') ? ' grouped' : '');
+  document.body.classList.toggle('notes-active', currentView === 'notes');
   if      (currentView === 'kanban')   renderKanban(board);
   else if (currentView === 'table')    renderTable(board);
   else if (currentView === 'calendar') renderCalendar(board);
+  else if (currentView === 'notes')    renderNotes(board);
   else                                 renderCards(board);
   renderOverview();
   renderGroupsList();
@@ -386,7 +505,7 @@ function renderBoard() {
 
 // Build ordered group sections from a task list (real groups + "No group")
 function groupOrder() {
-  return [...groups, { id: '', name: 'No group', color: '#9aa0b0' }];
+  return [...groups, { id: '', name: tr('group.none'), color: '#9aa0b0' }];
 }
 function groupHeaderHtml(g, count) {
   const collapsed = collapsedGroups.has(g.id);
@@ -415,7 +534,7 @@ function renderKanban(board) {
   board.innerHTML = columns.map(c => {
     const items = byCol[c.id] || [];
     let cards;
-    if (!items.length) cards = '<div class="col-empty">☁ No tasks here</div>';
+    if (!items.length) cards = '<div class="col-empty">' + escHtml(tr('col.empty')) + '</div>';
     else if (groupBy)  cards = renderGroupedCards(items, false);
     else               cards = items.map(t => cardHtml(t, false)).join('');
     return `
@@ -427,11 +546,11 @@ function renderKanban(board) {
           </div>
           <div class="col-header-right">
             <span class="col-badge">${items.length}</span>
-            <button class="col-menu-btn" data-edit-col="${escHtml(c.id)}" title="Edit column">⋯</button>
+            <button class="col-menu-btn" data-edit-col="${escHtml(c.id)}" title="${escHtml(tr('col.edit'))}">⋯</button>
           </div>
         </div>
         <div class="col-body" data-col-body="${escHtml(c.id)}">${cards}</div>
-        <button class="add-task-btn" data-add-col="${escHtml(c.id)}">+ Add task</button>
+        <button class="add-task-btn" data-add-col="${escHtml(c.id)}">${escHtml(tr('col.addTask'))}</button>
       </section>
     `;
   }).join('');
@@ -444,7 +563,7 @@ function renderKanban(board) {
 function renderCards(board) {
   const list = getFilteredSorted();
   if (!list.length) {
-    board.innerHTML = '<div class="table-empty">No tasks match your filters.</div>';
+    board.innerHTML = '<div class="table-empty">' + escHtml(tr('empty.noMatch')) + '</div>';
     return;
   }
   if (groupBy) {
@@ -480,8 +599,8 @@ function renderCalendar(board) {
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
   const todayStr = ymdLocal(today.getFullYear(), today.getMonth(), today.getDate());
-  const monthLabel = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+  const monthLabel = first.toLocaleDateString(localeFor(), { month: 'long', year: 'numeric' });
+  const WD = (I18N[lang] && I18N[lang].weekdays) || I18N.en.weekdays;
 
   let cells = '';
   for (let i = 0; i < startDay; i++) cells += '<div class="cal-cell cal-blank"></div>';
@@ -509,12 +628,12 @@ function renderCalendar(board) {
     '<div class="cal-wrap">' +
       '<div class="cal-toolbar">' +
         '<div class="cal-nav">' +
-          '<button class="icon-btn" id="cal-prev" title="Mes anterior">&#8249;</button>' +
-          '<button class="btn-ghost" id="cal-today" style="padding:6px 12px">Hoje</button>' +
-          '<button class="icon-btn" id="cal-next" title="Proximo mes">&#8250;</button>' +
+          '<button class="icon-btn" id="cal-prev" title="' + escHtml(tr('cal.prev')) + '">&#8249;</button>' +
+          '<button class="btn-ghost" id="cal-today" style="padding:6px 12px">' + escHtml(tr('cal.today')) + '</button>' +
+          '<button class="icon-btn" id="cal-next" title="' + escHtml(tr('cal.next')) + '">&#8250;</button>' +
         '</div>' +
         '<div class="cal-month">' + escHtml(monthLabel) + '</div>' +
-        '<div class="cal-legend">' + (undated ? undated + ' sem prazo' : '') + '</div>' +
+        '<div class="cal-legend">' + (undated ? undated + ' ' + tr('cal.noDeadline') : '') + '</div>' +
       '</div>' +
       '<div class="cal-weekdays">' + WD.map(d => '<div>' + d + '</div>').join('') + '</div>' +
       '<div class="cal-grid">' + cells + '</div>' +
@@ -539,7 +658,7 @@ function openTaskModalWithDate(ds) {
 function renderTable(board) {
   const list = getFilteredSorted();
   if (!list.length) {
-    board.innerHTML = '<div class="table-empty">No tasks match your filters.</div>';
+    board.innerHTML = '<div class="table-empty">' + escHtml(tr('empty.noMatch')) + '</div>';
     return;
   }
   const sortBy = document.getElementById('sort').value;
@@ -561,11 +680,11 @@ function renderTable(board) {
     <table class="task-table">
       <thead>
         <tr>
-          <th data-sort="title" class="${sortMark('title')}">Task</th>
-          <th data-sort="priority" class="${sortMark('priority')}">Priority</th>
-          <th data-sort="deadline" class="${sortMark('deadline')}">Deadline</th>
-          <th>Status</th>
-          <th data-sort="created" class="${sortMark('created')}">Added</th>
+          <th data-sort="title" class="${sortMark('title')}">${escHtml(tr('th.task'))}</th>
+          <th data-sort="priority" class="${sortMark('priority')}">${escHtml(tr('th.priority'))}</th>
+          <th data-sort="deadline" class="${sortMark('deadline')}">${escHtml(tr('th.deadline'))}</th>
+          <th>${escHtml(tr('th.status'))}</th>
+          <th data-sort="created" class="${sortMark('created')}">${escHtml(tr('th.added'))}</th>
           <th></th>
         </tr>
       </thead>
@@ -584,7 +703,7 @@ function renderTable(board) {
 function tableRowHtml(t) {
   const col = getCol(t.col);
   const dl = formatDeadline(t.deadline, t.col === 'done');
-  const createdStr = new Date(t.created).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const createdStr = new Date(t.created).toLocaleDateString(localeFor(), { month: 'short', day: 'numeric' });
   const colChip = col
     ? `<span class="chip chip-col" style="background:${escHtml(col.color)}">${escHtml(col.name)}</span>`
     : `<span class="chip chip-deadline">—</span>`;
@@ -606,13 +725,13 @@ function tableRowHtml(t) {
         </div>
         ${descHtml}
       </td>
-      <td><span class="chip chip-prio" data-p="${escHtml(t.priority)}">${escHtml(t.priority)}</span></td>
+      <td><span class="chip chip-prio" data-p="${escHtml(t.priority)}">${escHtml(prioLabel(t.priority))}</span></td>
       <td>${dlChip}</td>
       <td>${colChip}</td>
       <td style="color:var(--text-light);font-size:12px;">${createdStr}</td>
       <td class="t-actions">
-        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="Edit">✎</button>
-        <button class="icon-btn" data-del="${escHtml(t.id)}" title="Delete">✕</button>
+        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="${escHtml(tr('card.edit'))}">✎</button>
+        <button class="icon-btn" data-del="${escHtml(t.id)}" title="${escHtml(tr('card.delete'))}">✕</button>
       </td>
     </tr>
   `;
@@ -632,16 +751,16 @@ function cardHtml(t, showColumnChip) {
   const grp = (t.group && !groupBy) ? getGroup(t.group) : null;
   const groupChip = grp ? `<span class="chip chip-col" style="background:${escHtml(grp.color)}">${escHtml(grp.name)}</span>` : '';
   const prevBtn = colIdx > 0
-    ? `<button class="icon-btn" data-move="prev" data-id="${escHtml(t.id)}" title="Move left">←</button>` : '';
+    ? `<button class="icon-btn" data-move="prev" data-id="${escHtml(t.id)}" title="${escHtml(tr('card.moveLeft'))}">←</button>` : '';
   const nextBtn = colIdx > -1 && colIdx < columns.length - 1
-    ? `<button class="icon-btn" data-move="next" data-id="${escHtml(t.id)}" title="Move right">→</button>` : '';
+    ? `<button class="icon-btn" data-move="next" data-id="${escHtml(t.id)}" title="${escHtml(tr('card.moveRight'))}">→</button>` : '';
   const draggable = currentView === 'kanban' ? 'draggable="true"' : '';
   return `
     <article class="card priority-${escHtml(t.priority)}" ${draggable} data-id="${escHtml(t.id)}">
       <div class="card-title" data-edit="${escHtml(t.id)}">${escHtml(t.title)}</div>
       ${descHtml}
       <div class="card-meta">
-        <span class="chip chip-prio" data-p="${escHtml(t.priority)}">${escHtml(t.priority)}</span>
+        <span class="chip chip-prio" data-p="${escHtml(t.priority)}">${escHtml(prioLabel(t.priority))}</span>
         ${dlChip}
         ${stChip}
         ${groupChip}
@@ -649,8 +768,8 @@ function cardHtml(t, showColumnChip) {
       </div>
       <div class="card-actions">
         ${prevBtn}${nextBtn}
-        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="Edit">✎</button>
-        <button class="icon-btn" data-del="${escHtml(t.id)}" title="Delete">✕</button>
+        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="${escHtml(tr('card.edit'))}">✎</button>
+        <button class="icon-btn" data-del="${escHtml(t.id)}" title="${escHtml(tr('card.delete'))}">✕</button>
       </div>
     </article>
   `;
@@ -673,7 +792,7 @@ function renderOverview() {
 function renderGroupsList() {
   const el = document.getElementById('groups-list');
   if (!el) return;
-  if (!groups.length) { el.innerHTML = '<div class="group-empty">No groups yet.</div>'; return; }
+  if (!groups.length) { el.innerHTML = '<div class="group-empty">' + escHtml(tr('groups.empty')) + '</div>'; return; }
   const counts = {};
   groups.forEach(g => counts[g.id] = 0);
   tasks.forEach(t => { if (t.group && counts[t.group] != null) counts[t.group]++; });
@@ -682,7 +801,7 @@ function renderGroupsList() {
       <span class="g-dot" style="background:${escHtml(g.color)}"></span>
       <span class="g-name">${escHtml(g.name)}</span>
       <span class="group-count">${counts[g.id] || 0}</span>
-      <button class="g-edit" data-edit-group="${escHtml(g.id)}" title="Edit group">⋯</button>
+      <button class="g-edit" data-edit-group="${escHtml(g.id)}" title="${escHtml(tr('group.edit'))}">⋯</button>
     </div>
   `).join('');
   el.querySelectorAll('[data-edit-group]').forEach(node => {
@@ -771,7 +890,7 @@ function attachCardHandlers(isKanban) {
       e.stopPropagation();
       const id = el.dataset.del;
       const t = tasks.find(x => x.id === id);
-      if (t && confirm('Delete "' + t.title + '"?')) {
+      if (t && confirm(tr('confirm.delTask').replace('{name}', t.title))) {
         tasks = tasks.filter(x => x.id !== id);
         saveTasks(); renderBoard();
       }
@@ -982,17 +1101,17 @@ function renderModalSubtasks() {
   if (!container) return;
   const done = modalSubtasks.filter(s => s.done).length;
   const total = modalSubtasks.length;
-  document.getElementById('m-subtask-meta').textContent = total ? `${done} of ${total} done` : '';
+  document.getElementById('m-subtask-meta').textContent = total ? (done + ' ' + tr('m.of') + ' ' + total + ' ' + tr('m.done')) : '';
 
   if (total === 0) {
-    container.innerHTML = '<div class="subtask-empty">No subtasks yet.</div>';
+    container.innerHTML = '<div class="subtask-empty">' + escHtml(tr('m.noSubtasks')) + '</div>';
     return;
   }
   container.innerHTML = modalSubtasks.map((st, i) => `
     <div class="subtask-row" data-idx="${i}">
       <input type="checkbox" class="subtask-check" ${st.done ? 'checked' : ''}>
-      <input type="text" class="subtask-text ${st.done ? 'done' : ''}" value="${escHtml(st.text)}" placeholder="Subtask...">
-      <button type="button" class="subtask-del" title="Remove">✕</button>
+      <input type="text" class="subtask-text ${st.done ? 'done' : ''}" value="${escHtml(st.text)}" placeholder="${escHtml(tr('m.subPlaceholder'))}">
+      <button type="button" class="subtask-del" title="${escHtml(tr('m.remove'))}">✕</button>
     </div>
   `).join('');
 }
@@ -1007,7 +1126,7 @@ function setupSubtaskHandlers() {
       row.querySelector('.subtask-text').classList.toggle('done', e.target.checked);
       const done = modalSubtasks.filter(s => s.done).length;
       const total = modalSubtasks.length;
-      document.getElementById('m-subtask-meta').textContent = total ? `${done} of ${total} done` : '';
+      document.getElementById('m-subtask-meta').textContent = total ? (done + ' ' + tr('m.of') + ' ' + total + ' ' + tr('m.done')) : '';
     }
   });
   container.addEventListener('input', e => {
@@ -1056,54 +1175,54 @@ function openTaskModal(id) {
     `<option value="${escHtml(c.id)}" ${t && t.col===c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`
   ).join('');
   const tGroup = t ? (t.group || '') : '';
-  const groupOpts = `<option value="" ${tGroup==='' ? 'selected' : ''}>— No group —</option>` +
+  const groupOpts = `<option value="" ${tGroup==='' ? 'selected' : ''}>${escHtml(tr('m.noGroup'))}</option>` +
     groups.map(g => `<option value="${escHtml(g.id)}" ${tGroup===g.id ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('');
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
     <div class="modal modal-lg" role="dialog" aria-modal="true">
-      <h2>${t ? 'Edit task' : 'New task'}</h2>
+      <h2>${t ? escHtml(tr('m.editTask')) : escHtml(tr('m.newTask'))}</h2>
       <form id="m-form" autocomplete="off">
         <div class="field">
-          <label for="m-title">Task name</label>
+          <label for="m-title">${escHtml(tr('m.taskName'))}</label>
           <input type="text" id="m-title" required value="${t ? escHtml(t.title) : ''}">
         </div>
         <div class="field">
-          <label>Description</label>
+          <label>${escHtml(tr('m.desc'))}</label>
           ${richEditorMarkup('m-desc')}
         </div>
         <div class="field">
-          <label>Priority</label>
+          <label>${escHtml(tr('m.priority'))}</label>
           <div class="prio-grid" id="m-prio">
-            <button type="button" class="prio-btn ${modalSelectedPrio==='Critical'?'active':''}" data-p="Critical">Critical</button>
-            <button type="button" class="prio-btn ${modalSelectedPrio==='High'?'active':''}"     data-p="High">High</button>
-            <button type="button" class="prio-btn ${modalSelectedPrio==='Medium'?'active':''}"   data-p="Medium">Medium</button>
-            <button type="button" class="prio-btn ${modalSelectedPrio==='Low'?'active':''}"      data-p="Low">Low</button>
+            <button type="button" class="prio-btn ${modalSelectedPrio==='Critical'?'active':''}" data-p="Critical">${escHtml(prioLabel('Critical'))}</button>
+            <button type="button" class="prio-btn ${modalSelectedPrio==='High'?'active':''}"     data-p="High">${escHtml(prioLabel('High'))}</button>
+            <button type="button" class="prio-btn ${modalSelectedPrio==='Medium'?'active':''}"   data-p="Medium">${escHtml(prioLabel('Medium'))}</button>
+            <button type="button" class="prio-btn ${modalSelectedPrio==='Low'?'active':''}"      data-p="Low">${escHtml(prioLabel('Low'))}</button>
           </div>
         </div>
         <div class="field">
-          <label for="m-deadline">Deadline</label>
+          <label for="m-deadline">${escHtml(tr('m.deadline'))}</label>
           <input type="date" id="m-deadline" value="${t && t.deadline ? escHtml(t.deadline) : ''}">
         </div>
         <div class="field">
-          <label for="m-col">Column</label>
+          <label for="m-col">${escHtml(tr('m.column'))}</label>
           <select id="m-col">${colOpts}</select>
         </div>
         <div class="field">
-          <label for="m-group">Group</label>
+          <label for="m-group">${escHtml(tr('m.group'))}</label>
           <select id="m-group">${groupOpts}</select>
         </div>
         <div class="field">
           <div class="field-label-row">
-            <label>Subtasks</label>
+            <label>${escHtml(tr('m.subtasks'))}</label>
             <span class="field-meta" id="m-subtask-meta"></span>
           </div>
           <div class="subtask-list" id="m-subtasks-list"></div>
-          <button type="button" class="add-subtask-btn" id="m-add-subtask">+ Add subtask</button>
+          <button type="button" class="add-subtask-btn" id="m-add-subtask">${escHtml(tr('m.addSubtask'))}</button>
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="m-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
+          <button type="button" class="btn-secondary" id="m-cancel">${escHtml(tr('m.cancel'))}</button>
+          <button type="submit" class="btn-primary">${escHtml(tr('m.save'))}</button>
         </div>
       </form>
     </div>
@@ -1166,20 +1285,20 @@ function openColumnModal(id) {
     `<button type="button" class="swatch ${c.toLowerCase() === modalSelectedColor.toLowerCase() ? 'active' : ''}" style="background:${c}" data-swatch="${c}"></button>`
   ).join('');
   const deleteBtn = col
-    ? `<button type="button" class="btn-danger danger" id="c-delete">Delete column</button>`
+    ? `<button type="button" class="btn-danger danger" id="c-delete">${escHtml(tr('c.delete'))}</button>`
     : '';
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <h2>${col ? 'Edit column' : 'New column'}</h2>
+      <h2>${col ? escHtml(tr('c.editCol')) : escHtml(tr('c.newCol'))}</h2>
       <form id="c-form" autocomplete="off">
         <div class="field">
-          <label for="c-name">Name</label>
+          <label for="c-name">${escHtml(tr('c.name'))}</label>
           <input type="text" id="c-name" required value="${col ? escHtml(col.name) : ''}">
         </div>
         <div class="field">
-          <label>Color</label>
+          <label>${escHtml(tr('c.color'))}</label>
           <div class="color-row">
             <input type="color" id="c-color" value="${modalSelectedColor}">
             <div class="swatches" id="c-swatches">${swatches}</div>
@@ -1187,8 +1306,8 @@ function openColumnModal(id) {
         </div>
         <div class="modal-actions">
           ${deleteBtn}
-          <button type="button" class="btn-secondary" id="c-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
+          <button type="button" class="btn-secondary" id="c-cancel">${escHtml(tr('m.cancel'))}</button>
+          <button type="submit" class="btn-primary">${escHtml(tr('m.save'))}</button>
         </div>
       </form>
     </div>
@@ -1221,14 +1340,14 @@ function openColumnModal(id) {
   if (col) {
     document.getElementById('c-delete').addEventListener('click', () => {
       if (columns.length <= 1) {
-        alert("You can't delete the last remaining column.");
+        alert(tr('c.cantDeleteLast'));
         return;
       }
       const taskCount = tasks.filter(t => t.col === col.id).length;
       const firstOther = columns.find(c => c.id !== col.id);
       const msg = taskCount
-        ? `Delete "${col.name}"?\n\n${taskCount} task${taskCount===1?'':'s'} will be moved to "${firstOther.name}".`
-        : `Delete "${col.name}"?`;
+        ? tr('c.confirmDelMove').replace('{name}', col.name).replace('{n}', taskCount).replace('{other}', firstOther.name)
+        : tr('c.confirmDel').replace('{name}', col.name);
       if (!confirm(msg)) return;
       tasks.forEach(t => { if (t.col === col.id) t.col = firstOther.id; });
       columns = columns.filter(c => c.id !== col.id);
@@ -1270,19 +1389,19 @@ function openGroupModal(id) {
   const swatches = PALETTE.map(c =>
     `<button type="button" class="swatch ${c.toLowerCase() === modalSelectedColor.toLowerCase() ? 'active' : ''}" style="background:${c}" data-swatch="${c}"></button>`
   ).join('');
-  const deleteBtn = grp ? `<button type="button" class="btn-danger danger" id="g-delete">Delete group</button>` : '';
+  const deleteBtn = grp ? `<button type="button" class="btn-danger danger" id="g-delete">${escHtml(tr('g.delete'))}</button>` : '';
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <h2>${grp ? 'Edit group' : 'New group'}</h2>
+      <h2>${grp ? escHtml(tr('g.editGroup')) : escHtml(tr('g.newGroup'))}</h2>
       <form id="g-form" autocomplete="off">
         <div class="field">
-          <label for="g-name">Name</label>
+          <label for="g-name">${escHtml(tr('c.name'))}</label>
           <input type="text" id="g-name" required value="${grp ? escHtml(grp.name) : ''}">
         </div>
         <div class="field">
-          <label>Color</label>
+          <label>${escHtml(tr('c.color'))}</label>
           <div class="color-row">
             <input type="color" id="g-color" value="${modalSelectedColor}">
             <div class="swatches" id="g-swatches">${swatches}</div>
@@ -1290,8 +1409,8 @@ function openGroupModal(id) {
         </div>
         <div class="modal-actions">
           ${deleteBtn}
-          <button type="button" class="btn-secondary" id="g-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
+          <button type="button" class="btn-secondary" id="g-cancel">${escHtml(tr('m.cancel'))}</button>
+          <button type="submit" class="btn-primary">${escHtml(tr('m.save'))}</button>
         </div>
       </form>
     </div>
@@ -1324,7 +1443,7 @@ function openGroupModal(id) {
   if (grp) {
     document.getElementById('g-delete').addEventListener('click', () => {
       const n = tasks.filter(t => t.group === grp.id).length;
-      if (!confirm(`Delete group "${grp.name}"?` + (n ? `\n\n${n} task${n===1?'':'s'} will become ungrouped.` : ''))) return;
+      if (!confirm(tr('g.confirmDel').replace('{name}', grp.name) + (n ? tr('g.confirmDelTasks').replace('{n}', n) : ''))) return;
       tasks.forEach(t => { if (t.group === grp.id) t.group = ''; });
       groups = groups.filter(g => g.id !== grp.id);
       filters.groups.delete(grp.id);
@@ -1361,7 +1480,7 @@ function renderFilterPopover() {
       <input type="checkbox" data-filter-prio="${p}" ${filters.priorities.has(p) ? 'checked' : ''}>
       <span class="col-dot" style="background:${
         p==='Critical'?'#e2445c':p==='High'?'#fdab3d':p==='Medium'?'#579bfc':'#00c875'}"></span>
-      ${p}
+      ${escHtml(prioLabel(p))}
     </label>
   `).join('');
   const colOptions = columns.map(c => `
@@ -1387,21 +1506,21 @@ function renderFilterPopover() {
     <label class="filter-option">
       <input type="checkbox" data-filter-group="" ${filters.groups.has('') ? 'checked' : ''}>
       <span class="col-dot" style="background:#9aa0b0"></span>
-      No group
+      ${escHtml(tr('f.noGroup'))}
     </label>`;
   return `
-    <h4>Priority</h4>${prioOptions}
-    <h4>Status</h4>${colOptions}
-    <h4>Group</h4>${groupOptions}
-    <h4>Deadline</h4>
-    ${dlOpt('all','Any')}
-    ${dlOpt('overdue','Overdue')}
-    ${dlOpt('this_week','Due in next 7 days')}
-    ${dlOpt('later','Due later')}
-    ${dlOpt('none','No deadline')}
+    <h4>${escHtml(tr('f.priority'))}</h4>${prioOptions}
+    <h4>${escHtml(tr('f.status'))}</h4>${colOptions}
+    <h4>${escHtml(tr('f.group'))}</h4>${groupOptions}
+    <h4>${escHtml(tr('f.deadline'))}</h4>
+    ${dlOpt('all',escHtml(tr('f.any')))}
+    ${dlOpt('overdue',escHtml(tr('f.overdue')))}
+    ${dlOpt('this_week',escHtml(tr('f.next7')))}
+    ${dlOpt('later',escHtml(tr('f.later')))}
+    ${dlOpt('none',escHtml(tr('f.none')))}
     <div class="filter-actions">
-      <button type="button" class="btn-text" id="filter-clear">Clear filters</button>
-      <button type="button" class="btn-primary" id="filter-close" style="padding:6px 14px;">Done</button>
+      <button type="button" class="btn-text" id="filter-clear">${escHtml(tr('f.clear'))}</button>
+      <button type="button" class="btn-primary" id="filter-close" style="padding:6px 14px;">${escHtml(tr('f.done'))}</button>
     </div>
   `;
 }
@@ -1593,10 +1712,10 @@ function setSyncStatus(status) {
   if (!dot) return;
   dot.className = 'sync-dot' + (status === 'idle' ? '' : ' ' + status);
   const labels = {
-    idle:   'Offline - alteracoes salvas so neste dispositivo',
-    saving: 'Salvando...',
-    synced: 'Tudo sincronizado',
-    error:  'Erro de sincronizacao - vamos tentar de novo',
+    idle:   tr('sync.idle'),
+    saving: tr('sync.saving'),
+    synced: tr('sync.synced'),
+    error:  tr('sync.error'),
   };
   dot.title = labels[status] || '';
 }
@@ -1657,6 +1776,18 @@ async function pullAll() {
   groups  = (g.data || []).map(rowToGroup);
   tasks   = (t.data || []).map(rowToTask);
   cacheSet('columns', columns); cacheSet('groups', groups); cacheSet('tasks', tasks);
+  // notes live in an optional table; a missing table must not break the rest
+  try {
+    const nres = await sb.from('notes').select('*').eq('user_id', USER_ID).order('position', { ascending: true });
+    if (nres.error) throw nres.error;
+    notes = (nres.data || []).map(rowToNote);
+    notesTableMissing = false;
+    cacheSet('notes', notes);
+  } catch (e) {
+    notesTableMissing = true;
+    const cn = cacheGet('notes'); notes = Array.isArray(cn) ? cn : [];
+    console.warn('[notes] table not ready yet:', e && e.message);
+  }
 }
 
 // ---- Push (upsert current rows + delete the ones that disappeared) ----
@@ -1683,6 +1814,7 @@ async function flushCloudSave() {
     if (dirty.columns) { await pushTable('columns', columns.map(colToRow),   columns.map(c => c.id)); dirty.columns = false; }
     if (dirty.groups)  { await pushTable('groups',  groups.map(groupToRow),  groups.map(g => g.id));  dirty.groups = false; }
     if (dirty.tasks)   { await pushTable('tasks',   tasks.map(taskToRow),    tasks.map(t => t.id));   dirty.tasks = false; }
+    if (dirty.notes)   { try { await pushTable('notes', notes.map(noteToRow), notes.map(n => n.id)); notesTableMissing = false; } catch (e) { notesTableMissing = true; console.warn('[notes] push failed:', e && e.message); } dirty.notes = false; }
     lastPushAt = (window.performance ? performance.now() : Date.now());
     setSyncStatus('synced');
   } catch (e) {
@@ -1704,7 +1836,7 @@ function scheduleCloudSave(kind) {
 
 async function syncNow() {
   if (!sb || !USER_ID) return;
-  dirty.tasks = dirty.columns = dirty.groups = true;
+  dirty.tasks = dirty.columns = dirty.groups = dirty.notes = true;
   await flushCloudSave();
 }
 
@@ -1717,6 +1849,7 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks',   filter }, onRemoteChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'columns', filter }, onRemoteChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'groups',  filter }, onRemoteChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes',   filter }, onRemoteChange)
     .subscribe();
 }
 function onRemoteChange() {
@@ -1755,8 +1888,8 @@ function setupImport() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      if (!Array.isArray(parsed.tasks)) { alert('Arquivo JSON inválido — campo "tasks" não encontrado.'); return; }
-      if (!confirm(`Importar ${parsed.tasks.length} tarefas${parsed.columns ? ' e ' + parsed.columns.length + ' colunas' : ''}?\n\nIsso substituirá os dados atuais.`)) return;
+      if (!Array.isArray(parsed.tasks)) { alert(tr('import.invalid')); return; }
+      if (!confirm(tr('import.confirm').replace('{n}', parsed.tasks.length))) return;
       tasks   = parsed.tasks;   tasks.forEach(t => { if (!Array.isArray(t.subtasks)) t.subtasks = []; if (t.group === undefined) t.group = ''; });
       if (Array.isArray(parsed.columns) && parsed.columns.length) columns = parsed.columns;
       if (Array.isArray(parsed.groups)) groups = parsed.groups;
@@ -1764,7 +1897,151 @@ function setupImport() {
       saveTasks(); saveColumns(); saveGroups();
       refreshColumnSelects();
       renderBoard();
-    } catch (err) { alert('Erro ao ler arquivo: ' + err.message); }
+    } catch (err) { alert(tr('import.error') + err.message); }
+  });
+}
+
+// ============================================================
+//  Notes (Markdown) + generate tasks
+// ============================================================
+function noteToRow(n, i) { return { id: n.id, user_id: USER_ID, title: n.title || '', content: n.content || '', position: i, created_at: new Date(n.created || Date.now()).toISOString() }; }
+function rowToNote(r) { return { id: r.id, title: r.title || '', content: r.content || '', created: r.created_at ? new Date(r.created_at).getTime() : Date.now() }; }
+
+function stripInlineMd(s) {
+  return String(s || '').replace(/\*\*|__|~~|`/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
+}
+function renderMarkdown(md) {
+  if (!md || !md.trim()) return '<div class="notes-preview-empty">' + escHtml(tr('notes.contentPh')) + '</div>';
+  let html = null;
+  if (window.marked && window.marked.parse) {
+    try { html = window.marked.parse(md, { breaks: true, gfm: true }); } catch (e) { html = null; }
+  }
+  if (html == null) html = '<pre style="white-space:pre-wrap;word-break:break-word">' + escHtml(md) + '</pre>';
+  return sanitizeHtml(html);
+}
+function extractTaskCandidates(md) {
+  const out = [];
+  String(md || '').split('\n').forEach(line => {
+    let m;
+    if ((m = line.match(/^\s*[-*+]\s+\[( |x|X)\]\s+(.*\S)\s*$/))) { out.push({ text: stripInlineMd(m[2]), done: m[1].toLowerCase() === 'x' }); return; }
+    if ((m = line.match(/^\s*[-*+]\s+(.*\S)\s*$/)))               { out.push({ text: stripInlineMd(m[1]), done: false }); return; }
+    if ((m = line.match(/^\s*\d+[.)]\s+(.*\S)\s*$/)))             { out.push({ text: stripInlineMd(m[1]), done: false }); return; }
+  });
+  return out;
+}
+
+function renderNotes(board) {
+  if (activeNoteId && !notes.find(n => n.id === activeNoteId)) activeNoteId = null;
+  if (!activeNoteId && notes.length) activeNoteId = notes[0].id;
+  const active = notes.find(n => n.id === activeNoteId) || null;
+
+  const listHtml = notes.length
+    ? notes.map(n => `<button class="note-item${n.id === activeNoteId ? ' active' : ''}" data-note="${escHtml(n.id)}">
+         <span class="note-item-title">${escHtml(n.title || tr('notes.untitled'))}</span>
+         <span class="note-item-snippet">${escHtml(stripInlineMd(n.content).slice(0, 90))}</span>
+       </button>`).join('')
+    : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>';
+
+  const banner = notesTableMissing ? `<div class="notes-banner">${escHtml(tr('notes.tableMissing'))}</div>` : '';
+
+  const mainHtml = active
+    ? `<div class="note-head">
+         <input type="text" id="note-title" class="note-title-input" value="${escHtml(active.title)}" placeholder="${escHtml(tr('notes.titlePh'))}">
+         <div class="note-head-actions">
+           <button class="btn-ghost" id="note-gen">${escHtml(tr('notes.gen'))}</button>
+           <button class="icon-btn" id="note-del" title="${escHtml(tr('notes.delete'))}">🗑</button>
+         </div>
+       </div>
+       <div class="note-split">
+         <textarea id="note-content" class="note-content" spellcheck="true" placeholder="${escHtml(tr('notes.contentPh'))}">${escHtml(active.content)}</textarea>
+         <div class="note-preview md-body" id="note-preview">${renderMarkdown(active.content)}</div>
+       </div>`
+    : `<div class="notes-select">${escHtml(tr('notes.select'))}</div>`;
+
+  board.innerHTML = `${banner}<div class="notes-wrap">
+      <div class="notes-list">
+        <button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button>
+        <div class="notes-items">${listHtml}</div>
+      </div>
+      <div class="notes-main">${mainHtml}</div>
+    </div>`;
+
+  const newBtn = document.getElementById('note-new');
+  if (newBtn) newBtn.addEventListener('click', () => {
+    const n = { id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), title: '', content: '', created: Date.now() };
+    notes.unshift(n); activeNoteId = n.id; saveNotes(); renderBoard();
+    const ti = document.getElementById('note-title'); if (ti) ti.focus();
+  });
+  board.querySelectorAll('[data-note]').forEach(el => el.addEventListener('click', () => { activeNoteId = el.dataset.note; renderBoard(); }));
+
+  const titleEl = document.getElementById('note-title');
+  const contentEl = document.getElementById('note-content');
+  const previewEl = document.getElementById('note-preview');
+  if (titleEl) titleEl.addEventListener('input', () => {
+    const n = notes.find(x => x.id === activeNoteId); if (!n) return;
+    n.title = titleEl.value; saveNotes();
+    const lab = board.querySelector('.note-item.active .note-item-title'); if (lab) lab.textContent = n.title || tr('notes.untitled');
+  });
+  if (contentEl) contentEl.addEventListener('input', () => {
+    const n = notes.find(x => x.id === activeNoteId); if (!n) return;
+    n.content = contentEl.value;
+    if (previewEl) previewEl.innerHTML = renderMarkdown(n.content);
+    saveNotes();
+  });
+  const delBtn = document.getElementById('note-del');
+  if (delBtn) delBtn.addEventListener('click', () => {
+    if (!confirm(tr('notes.deleteConfirm'))) return;
+    notes = notes.filter(x => x.id !== activeNoteId); activeNoteId = null; saveNotes(); renderBoard();
+  });
+  const genBtn = document.getElementById('note-gen');
+  if (genBtn) genBtn.addEventListener('click', () => openGenerateTasksModal(activeNoteId));
+}
+
+function openGenerateTasksModal(noteId) {
+  const note = notes.find(n => n.id === noteId);
+  if (!note) return;
+  const cands = extractTaskCandidates(note.content);
+  const colOpts = columns.map(c => `<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('');
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const body = cands.length
+    ? `<div class="gen-list">${cands.map((c, i) => `<label class="gen-item"><input type="checkbox" data-gi="${i}" checked><span class="${c.done ? 'gen-done' : ''}">${escHtml(c.text)}</span></label>`).join('')}</div>
+       <div class="field"><label>${escHtml(tr('gen.column'))}</label><select id="gen-col">${colOpts}</select></div>`
+    : `<p class="settings-tip">${escHtml(tr('gen.none'))}</p>`;
+  backdrop.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <h2>${escHtml(tr('gen.title'))}</h2>
+      ${body}
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="gen-cancel">${escHtml(tr('gen.cancel'))}</button>
+        ${cands.length ? `<button type="button" class="btn-primary" id="gen-create">${escHtml(tr('gen.create'))}</button>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  function close() { if (backdrop.parentNode) document.body.removeChild(backdrop); document.removeEventListener('keydown', onKey); }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.getElementById('gen-cancel').addEventListener('click', close);
+  const createBtn = document.getElementById('gen-create');
+  if (createBtn) createBtn.addEventListener('click', () => {
+    const colSel = document.getElementById('gen-col').value;
+    const doneCol = columns.find(c => c.id === 'done');
+    let n = 0;
+    backdrop.querySelectorAll('[data-gi]').forEach(cb => {
+      if (!cb.checked) return;
+      const cand = cands[parseInt(cb.dataset.gi)];
+      if (!cand || !cand.text) return;
+      const targetCol = (cand.done && doneCol) ? doneCol.id : colSel;
+      tasks.push({ id: uid(), title: cand.text, desc: '', priority: 'Medium', deadline: null, col: targetCol, group: '', created: Date.now() + n, subtasks: [] });
+      n++;
+    });
+    close();
+    if (n) {
+      saveTasks();
+      currentView = 'kanban'; saveView();
+      document.querySelectorAll('#view-switch button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+      renderBoard();
+    }
   });
 }
 
@@ -1782,7 +2059,7 @@ function setupAccountMenu() {
   document.getElementById('acct-sync').addEventListener('click', async () => { menu.hidden = true; await syncNow(); });
   document.getElementById('acct-signout').addEventListener('click', async () => {
     menu.hidden = true;
-    if (!confirm('Sair da sua conta? Os dados continuam salvos no Supabase.')) return;
+    if (!confirm(tr('confirm.signout'))) return;
     await signOut();
   });
 }
@@ -1829,10 +2106,10 @@ function setAuthMode(mode) {
   const sub    = document.getElementById('auth-formsub');
   const submit = document.getElementById('auth-submit');
   const tog    = document.getElementById('auth-toggle');
-  if (title)  title.textContent  = mode === 'signup' ? 'Criar sua conta' : 'Bem-vindo de volta';
-  if (sub)    sub.textContent    = mode === 'signup' ? 'Preencha para criar seu acesso' : 'Entre para acessar seu quadro';
-  if (submit) submit.textContent = mode === 'signup' ? 'Criar conta' : 'Entrar';
-  if (tog)    tog.textContent    = mode === 'signup' ? 'Já tenho conta — entrar' : 'Criar conta';
+  if (title)  title.textContent  = mode === 'signup' ? tr('auth.createTitle') : tr('auth.welcome');
+  if (sub)    sub.textContent    = mode === 'signup' ? tr('auth.createSub') : tr('auth.welcomeSub');
+  if (submit) submit.textContent = mode === 'signup' ? tr('auth.create') : tr('auth.signin');
+  if (tog)    tog.textContent    = mode === 'signup' ? tr('auth.toSignin') : tr('auth.toCreate');
   showAuthError('');
 }
 function showAuthScreen(showForm) {
@@ -1846,13 +2123,13 @@ function hideAuthScreen() {
   document.getElementById('app-root').hidden = false;
 }
 function translateAuthError(msg) {
-  if (!msg) return 'Algo deu errado. Tente de novo.';
-  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
-  if (/already registered/i.test(msg)) return 'Esse e-mail já tem conta. Faça login.';
-  if (/Password should be at least/i.test(msg)) return 'A senha precisa de pelo menos 6 caracteres.';
-  if (/Email not confirmed/i.test(msg)) return 'E-mail ainda não confirmado. Confirme pelo link ou desative a confirmação no Supabase.';
-  if (/Signups not allowed|signup is disabled|not allowed/i.test(msg)) return 'Cadastros estão desativados. Peça acesso ao administrador.';
-  if (/rate limit|too many/i.test(msg)) return 'Muitas tentativas. Espere um momento e tente de novo.';
+  if (!msg) return tr('auth.errGeneric');
+  if (/Invalid login credentials/i.test(msg)) return tr('auth.errInvalid');
+  if (/already registered/i.test(msg)) return tr('auth.errExists');
+  if (/Password should be at least/i.test(msg)) return tr('auth.errWeak');
+  if (/Email not confirmed/i.test(msg)) return tr('auth.errUnconfirmed');
+  if (/Signups not allowed|signup is disabled|not allowed/i.test(msg)) return tr('auth.errSignupOff');
+  if (/rate limit|too many/i.test(msg)) return tr('auth.errRate');
   return msg;
 }
 function setupAuthUI() {
@@ -1881,7 +2158,7 @@ function setupAuthUI() {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
         if (!data.session) {
-          showAuthError('Conta criada! Confirme pelo e-mail OU desative "Confirm email" no Supabase e entre.');
+          showAuthError(tr('auth.created'));
           setAuthMode('signin');
         }
       } else {
@@ -1964,6 +2241,7 @@ function setupKeyboardShortcuts() {
 let booted = false;
 function setupStaticUI() {
   if (booted) return; booted = true;
+  loadLang();
   loadView();
   loadGroupBy();
   loadCollapsed();
@@ -1980,6 +2258,8 @@ function setupStaticUI() {
   document.getElementById('add-group-side').addEventListener('click', () => openGroupModal(null));
   document.getElementById('groupby-btn').addEventListener('click', () => { groupBy = !groupBy; saveGroupBy(); renderBoard(); });
   setupKeyboardShortcuts();
+  document.addEventListener('click', e => { const b = e.target.closest('[data-setlang]'); if (b) { e.preventDefault(); setLang(b.getAttribute('data-setlang')); } });
+  applyStaticI18n();
 }
 
 async function boot() {

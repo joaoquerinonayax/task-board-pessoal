@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>João Querino Task Board</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,34 +22,35 @@
     </div>
     <h1 class="auth-brandname">João Querino<span>Task Board</span></h1>
 
-    <div id="auth-loading" class="auth-loading"><span class="auth-spinner"></span> Carregando…</div>
+    <div id="auth-loading" class="auth-loading"><span class="auth-spinner"></span> <span data-i18n="auth.loading">Loading…</span></div>
 
     <form id="auth-form" autocomplete="on" hidden>
-      <h2 id="auth-title">Bem-vindo de volta</h2>
-      <p class="auth-formsub" id="auth-formsub">Entre para acessar seu quadro</p>
+      <h2 id="auth-title">Welcome back</h2>
+      <p class="auth-formsub" id="auth-formsub">Sign in to access your board</p>
       <div class="auth-field">
-        <label for="auth-email">E-mail</label>
-        <input type="email" id="auth-email" autocomplete="email" placeholder="voce@exemplo.com" required>
+        <label for="auth-email" data-i18n="auth.email">E-mail</label>
+        <input type="email" id="auth-email" autocomplete="email" placeholder="you@example.com" required>
       </div>
       <div class="auth-field">
-        <label for="auth-password">Senha</label>
+        <label for="auth-password" data-i18n="auth.password">Password</label>
         <input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" minlength="6" required>
       </div>
       <div class="auth-error" id="auth-error" hidden></div>
-      <button type="submit" class="btn-primary auth-btn" id="auth-submit">Entrar</button>
-      <p class="auth-switch" id="auth-switch-line" hidden>Não tem conta? <a id="auth-toggle">Criar conta</a></p>
-      <p class="auth-restricted" id="auth-restricted" hidden>🔒 Acesso restrito — peça acesso ao administrador.</p>
+      <button type="submit" class="btn-primary auth-btn" id="auth-submit">Sign in</button>
+      <p class="auth-switch" id="auth-switch-line" hidden><span data-i18n="auth.noAccount">Don't have an account?</span> <a id="auth-toggle">Create account</a></p>
+      <p class="auth-restricted" id="auth-restricted" data-i18n="auth.restricted" hidden>🔒 Restricted access — ask the administrator for access.</p>
     </form>
 
-    <div class="auth-error" id="auth-config-error" hidden>
-      ⚠️ Supabase não configurado. Edite <code>config.js</code> com a URL e a anon key do seu projeto
-      (veja o <strong>README.md</strong>).
-    </div>
+    <div class="auth-error" id="auth-config-error" data-i18n="auth.configError" hidden>⚠️ Supabase not configured. Edit config.js (see README.md).</div>
 
     <div class="auth-features">
-      <span>⊞ Kanban</span>
-      <span>📅 Calendário</span>
-      <span>⚡ Tempo real</span>
+      <span data-i18n="auth.featKanban">⊞ Kanban</span>
+      <span data-i18n="auth.featCalendar">📅 Calendar</span>
+      <span data-i18n="auth.featRealtime">⚡ Real-time</span>
+    </div>
+    <div class="auth-lang">
+      <button type="button" data-setlang="en">EN</button>
+      <button type="button" data-setlang="pt-BR">PT-BR</button>
     </div>
   </div>
 </div>
@@ -56,104 +59,113 @@
 <div id="app-root" hidden>
 
 <header class="topbar">
-  <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+  <button class="hamburger" id="hamburger" aria-label="Menu" data-i18n-title="tb.menu">☰</button>
   <div class="logo">
     <div class="dots"><span class="dot r"></span><span class="dot o"></span><span class="dot p"></span></div>
   </div>
   <div class="board-name">João Querino Task Board</div>
   <div class="topbar-spacer"></div>
-  <button class="theme-btn" id="theme-btn" title="Alternar tema claro/escuro">☾</button>
+  <button class="theme-btn" id="theme-btn" data-i18n-title="tb.theme" title="Toggle light/dark theme">☾</button>
   <div class="sync-cluster">
-    <span class="sync-dot" id="sync-dot" title="Status de sincronização"></span>
+    <span class="sync-dot" id="sync-dot" data-i18n-title="tb.sync" title="Sync status"></span>
   </div>
   <div class="dropdown">
-    <button class="btn-ghost" id="export-btn">⤓ Export ▾</button>
+    <button class="btn-ghost" id="export-btn" data-i18n="tb.export">⤓ Export ▾</button>
     <div class="dropdown-menu" id="export-menu" hidden>
-      <button class="dropdown-item" data-export="json">⤓ Export as JSON</button>
-      <button class="dropdown-item" data-export="csv">⤓ Export as CSV</button>
+      <button class="dropdown-item" data-export="json" data-i18n="tb.exportJson">⤓ Export as JSON</button>
+      <button class="dropdown-item" data-export="csv" data-i18n="tb.exportCsv">⤓ Export as CSV</button>
       <hr style="margin:4px 0;border:0;border-top:1px solid var(--border)">
       <label class="dropdown-item import-file-btn">
-        ⤒ Import JSON
+        <span data-i18n="tb.import">⤒ Import JSON</span>
         <input type="file" id="import-file" accept=".json">
       </label>
     </div>
   </div>
-  <button class="btn-primary" id="open-modal">+ Add Task</button>
+  <button class="btn-primary" id="open-modal" data-i18n="tb.addTask">+ Add Task</button>
   <div class="dropdown">
-    <button class="account-btn" id="account-btn" title="Conta">?</button>
-    <div class="dropdown-menu" id="account-menu" hidden style="min-width:210px">
+    <button class="account-btn" id="account-btn" data-i18n-title="tb.account" title="Account">?</button>
+    <div class="dropdown-menu" id="account-menu" hidden style="min-width:220px">
       <div class="account-email" id="acct-email"></div>
       <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
-      <button class="dropdown-item" id="acct-sync">⟳ Sincronizar agora</button>
-      <button class="dropdown-item" id="acct-signout">⎋ Sair</button>
+      <button class="dropdown-item" id="acct-sync" data-i18n="acct.sync">⟳ Sync now</button>
+      <button class="dropdown-item" id="acct-signout" data-i18n="acct.signout">⎋ Sign out</button>
+      <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
+      <div class="acct-lang-row">
+        <span data-i18n="acct.language">Language</span>
+        <span class="acct-lang">
+          <button type="button" data-setlang="en">EN</button>
+          <button type="button" data-setlang="pt-BR">PT</button>
+        </span>
+      </div>
     </div>
   </div>
 </header>
 
 <div class="subbar">
   <div class="view-switch" id="view-switch">
-    <button data-view="kanban" class="active">⊞ Kanban</button>
-    <button data-view="table">☰ Table</button>
-    <button data-view="cards">▦ Cards</button>
-    <button data-view="calendar">📅 Calendar</button>
+    <button data-view="kanban" class="active" data-i18n="view.kanban">⊞ Kanban</button>
+    <button data-view="table" data-i18n="view.table">☰ Table</button>
+    <button data-view="cards" data-i18n="view.cards">▦ Cards</button>
+    <button data-view="calendar" data-i18n="view.calendar">📅 Calendar</button>
+    <button data-view="notes" data-i18n="view.notes">📝 Notes</button>
   </div>
-  <input class="search-input" id="search" placeholder="Search tasks...">
-  <span class="sort-label">Sort by</span>
+  <input class="search-input" id="search" data-i18n-ph="sb.search" placeholder="Search tasks...">
+  <span class="sort-label" data-i18n="sb.sortBy">Sort by</span>
   <select class="sort-select" id="sort">
-    <option value="manual">Manual</option>
-    <option value="created">Newest</option>
-    <option value="deadline">Deadline</option>
-    <option value="priority">Priority</option>
-    <option value="title">Title (A–Z)</option>
+    <option value="manual" data-i18n="sort.manual">Manual</option>
+    <option value="created" data-i18n="sort.created">Newest</option>
+    <option value="deadline" data-i18n="sort.deadline">Deadline</option>
+    <option value="priority" data-i18n="sort.priority">Priority</option>
+    <option value="title" data-i18n="sort.title">Title (A–Z)</option>
   </select>
   <div class="filter-btn-wrap">
-    <button class="btn-ghost filter-btn" id="filter-btn">⏷ Filter <span class="badge" id="filter-badge" hidden>0</span></button>
+    <button class="btn-ghost filter-btn" id="filter-btn"><span data-i18n="sb.filter">⏷ Filter</span> <span class="badge" id="filter-badge" hidden>0</span></button>
     <div class="filter-popover" id="filter-popover" hidden></div>
   </div>
-  <button class="btn-ghost" id="groupby-btn" title="Agrupar tarefas">⊟ Group</button>
+  <button class="btn-ghost" id="groupby-btn" data-i18n="sb.group" data-i18n-title="sb.groupTitle" title="Group tasks">⊟ Group</button>
 </div>
 
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
 <div class="layout">
   <aside class="sidebar" id="sidebar">
-    <h3>Add Task</h3>
+    <h3 data-i18n="side.addTask">Add Task</h3>
     <form id="side-form" autocomplete="off">
       <div class="field">
-        <label for="s-title">Task name</label>
+        <label for="s-title" data-i18n="side.taskName">Task name</label>
         <input type="text" id="s-title" required>
       </div>
       <div class="field">
-        <label for="s-desc">Description</label>
+        <label for="s-desc" data-i18n="side.desc">Description</label>
         <textarea id="s-desc"></textarea>
       </div>
       <div class="field">
-        <label>Priority</label>
+        <label data-i18n="side.priority">Priority</label>
         <div class="prio-grid" id="s-prio">
-          <button type="button" class="prio-btn" data-p="Critical">Critical</button>
-          <button type="button" class="prio-btn" data-p="High">High</button>
-          <button type="button" class="prio-btn active" data-p="Medium">Medium</button>
-          <button type="button" class="prio-btn" data-p="Low">Low</button>
+          <button type="button" class="prio-btn" data-p="Critical" data-i18n="prio.Critical">Critical</button>
+          <button type="button" class="prio-btn" data-p="High" data-i18n="prio.High">High</button>
+          <button type="button" class="prio-btn active" data-p="Medium" data-i18n="prio.Medium">Medium</button>
+          <button type="button" class="prio-btn" data-p="Low" data-i18n="prio.Low">Low</button>
         </div>
       </div>
       <div class="field">
-        <label for="s-deadline">Deadline</label>
+        <label for="s-deadline" data-i18n="side.deadline">Deadline</label>
         <input type="date" id="s-deadline">
       </div>
       <div class="field">
-        <label for="s-col">Column</label>
+        <label for="s-col" data-i18n="side.column">Column</label>
         <select id="s-col"></select>
       </div>
-      <button type="submit" class="btn-primary" style="width:100%; margin-top:4px;">+ Add to Board</button>
+      <button type="submit" class="btn-primary" style="width:100%; margin-top:4px;" data-i18n="side.addToBoard">+ Add to Board</button>
     </form>
     <hr class="divider">
-    <h3>Overview</h3>
+    <h3 data-i18n="side.overview">Overview</h3>
     <div id="overview"></div>
-    <button class="add-col-side" id="add-col-side">+ Add column</button>
+    <button class="add-col-side" id="add-col-side" data-i18n="side.addColumn">+ Add column</button>
     <hr class="divider">
-    <h3>Groups</h3>
+    <h3 data-i18n="side.groups">Groups</h3>
     <div id="groups-list"></div>
-    <button class="add-col-side" id="add-group-side">+ Add group</button>
+    <button class="add-col-side" id="add-group-side" data-i18n="side.addGroup">+ Add group</button>
   </aside>
 
   <main class="board view-kanban" id="board"></main>
@@ -163,7 +175,9 @@
 
 <!-- Supabase client (UMD build → window.supabase) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Your project URL + anon key -->
+<!-- Markdown renderer for Notes (window.marked) -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- Your project URL + key -->
 <script src="config.js"></script>
 <!-- App -->
 <script src="app.js"></script>
