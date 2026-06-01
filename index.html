@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Task Board — My Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===================== Login screen ===================== -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="dots"><span class="dot r"></span><span class="dot o"></span><span class="dot p"></span></div>
+      <span>Task Board</span>
+    </div>
+    <p class="auth-sub">Seu quadro de tarefas, sincronizado na nuvem.</p>
+
+    <div id="auth-loading">Carregando…</div>
+
+    <form id="auth-form" autocomplete="on" hidden>
+      <h2 id="auth-title">Entrar</h2>
+      <div class="field">
+        <label for="auth-email">E-mail</label>
+        <input type="email" id="auth-email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="auth-password">Senha</label>
+        <input type="password" id="auth-password" autocomplete="current-password" minlength="6" required>
+      </div>
+      <div class="auth-error" id="auth-error" hidden></div>
+      <button type="submit" class="btn-primary" id="auth-submit">Entrar</button>
+      <p class="auth-switch">Não tem conta? <a id="auth-toggle">Criar conta</a></p>
+    </form>
+
+    <div class="auth-error" id="auth-config-error" hidden>
+      ⚠️ Supabase não configurado. Edite <code>config.js</code> com a URL e a anon key do seu projeto
+      (veja o <strong>README.md</strong>).
+    </div>
+  </div>
+</div>
+
+<!-- ===================== App ===================== -->
+<div id="app-root" hidden>
+
+<header class="topbar">
+  <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+  <div class="logo">
+    <div class="dots"><span class="dot r"></span><span class="dot o"></span><span class="dot p"></span></div>
+    <span class="logo-text">Task Board</span>
+  </div>
+  <div class="board-name">My Work</div>
+  <div class="topbar-spacer"></div>
+  <button class="theme-btn" id="theme-btn" title="Alternar tema claro/escuro">☾</button>
+  <div class="sync-cluster">
+    <span class="sync-dot" id="sync-dot" title="Status de sincronização"></span>
+  </div>
+  <div class="dropdown">
+    <button class="btn-ghost" id="export-btn">⤓ Export ▾</button>
+    <div class="dropdown-menu" id="export-menu" hidden>
+      <button class="dropdown-item" data-export="json">⤓ Export as JSON</button>
+      <button class="dropdown-item" data-export="csv">⤓ Export as CSV</button>
+      <hr style="margin:4px 0;border:0;border-top:1px solid var(--border)">
+      <label class="dropdown-item import-file-btn">
+        ⤒ Import JSON
+        <input type="file" id="import-file" accept=".json">
+      </label>
+    </div>
+  </div>
+  <button class="btn-primary" id="open-modal">+ Add Task</button>
+  <div class="dropdown">
+    <button class="account-btn" id="account-btn" title="Conta">?</button>
+    <div class="dropdown-menu" id="account-menu" hidden style="min-width:210px">
+      <div class="account-email" id="acct-email"></div>
+      <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
+      <button class="dropdown-item" id="acct-sync">⟳ Sincronizar agora</button>
+      <button class="dropdown-item" id="acct-signout">⎋ Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="subbar">
+  <div class="view-switch" id="view-switch">
+    <button data-view="kanban" class="active">⊞ Kanban</button>
+    <button data-view="table">☰ Table</button>
+    <button data-view="cards">▦ Cards</button>
+    <button data-view="calendar">📅 Calendar</button>
+  </div>
+  <input class="search-input" id="search" placeholder="Search tasks...">
+  <span class="sort-label">Sort by</span>
+  <select class="sort-select" id="sort">
+    <option value="manual">Manual</option>
+    <option value="created">Newest</option>
+    <option value="deadline">Deadline</option>
+    <option value="priority">Priority</option>
+    <option value="title">Title (A–Z)</option>
+  </select>
+  <div class="filter-btn-wrap">
+    <button class="btn-ghost filter-btn" id="filter-btn">⏷ Filter <span class="badge" id="filter-badge" hidden>0</span></button>
+    <div class="filter-popover" id="filter-popover" hidden></div>
+  </div>
+  <button class="btn-ghost" id="groupby-btn" title="Agrupar tarefas">⊟ Group</button>
+</div>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Add Task</h3>
+    <form id="side-form" autocomplete="off">
+      <div class="field">
+        <label for="s-title">Task name</label>
+        <input type="text" id="s-title" required>
+      </div>
+      <div class="field">
+        <label for="s-desc">Description</label>
+        <textarea id="s-desc"></textarea>
+      </div>
+      <div class="field">
+        <label>Priority</label>
+        <div class="prio-grid" id="s-prio">
+          <button type="button" class="prio-btn" data-p="Critical">Critical</button>
+          <button type="button" class="prio-btn" data-p="High">High</button>
+          <button type="button" class="prio-btn active" data-p="Medium">Medium</button>
+          <button type="button" class="prio-btn" data-p="Low">Low</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="s-deadline">Deadline</label>
+        <input type="date" id="s-deadline">
+      </div>
+      <div class="field">
+        <label for="s-col">Column</label>
+        <select id="s-col"></select>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%; margin-top:4px;">+ Add to Board</button>
+    </form>
+    <hr class="divider">
+    <h3>Overview</h3>
+    <div id="overview"></div>
+    <button class="add-col-side" id="add-col-side">+ Add column</button>
+    <hr class="divider">
+    <h3>Groups</h3>
+    <div id="groups-list"></div>
+    <button class="add-col-side" id="add-group-side">+ Add group</button>
+  </aside>
+
+  <main class="board view-kanban" id="board"></main>
+</div>
+
+</div><!-- /#app-root -->
+
+<!-- Supabase client (UMD build → window.supabase) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Your project URL + anon key -->
+<script src="config.js"></script>
+<!-- App -->
+<script src="app.js"></script>
+</body>
+</html>

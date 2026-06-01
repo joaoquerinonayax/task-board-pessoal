@@ -1,0 +1,14 @@
+# Personal / sensitive data exports — never commit these
+my-work-data.json
+*.local.json
+*.local.js
+.DS_Store
+
+# Editor / OS noise
+.vscode/
+.idea/
+.claude/
+node_modules/
+
+# Local test artifact (mock Supabase — never deploy)
+_test.html
