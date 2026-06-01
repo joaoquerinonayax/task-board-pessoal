@@ -1812,6 +1812,10 @@ function loadTheme() {
 // ============================================================
 //  Auth UI (email + password)
 // ============================================================
+// Self-service "Create account" in the UI. Keep this false for a private board.
+// IMPORTANT: the real lock is in Supabase (Authentication → turn OFF "Allow new
+// users to sign up"). Hiding the button here is cosmetic on its own.
+const ALLOW_SIGNUP = false;
 let authMode = 'signin';
 function showAuthError(msg) {
   const el = document.getElementById('auth-error');
@@ -1821,9 +1825,14 @@ function showAuthError(msg) {
 }
 function setAuthMode(mode) {
   authMode = mode;
-  document.getElementById('auth-title').textContent  = mode === 'signup' ? 'Criar conta' : 'Entrar';
-  document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Criar conta' : 'Entrar';
-  document.getElementById('auth-toggle').textContent = mode === 'signup' ? 'Ja tenho conta - entrar' : 'Criar conta';
+  const title  = document.getElementById('auth-title');
+  const sub    = document.getElementById('auth-formsub');
+  const submit = document.getElementById('auth-submit');
+  const tog    = document.getElementById('auth-toggle');
+  if (title)  title.textContent  = mode === 'signup' ? 'Criar sua conta' : 'Bem-vindo de volta';
+  if (sub)    sub.textContent    = mode === 'signup' ? 'Preencha para criar seu acesso' : 'Entre para acessar seu quadro';
+  if (submit) submit.textContent = mode === 'signup' ? 'Criar conta' : 'Entrar';
+  if (tog)    tog.textContent    = mode === 'signup' ? 'Já tenho conta — entrar' : 'Criar conta';
   showAuthError('');
 }
 function showAuthScreen(showForm) {
@@ -1839,27 +1848,40 @@ function hideAuthScreen() {
 function translateAuthError(msg) {
   if (!msg) return 'Algo deu errado. Tente de novo.';
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
-  if (/already registered/i.test(msg)) return 'Esse e-mail ja tem conta. Use "Ja tenho conta - entrar".';
+  if (/already registered/i.test(msg)) return 'Esse e-mail já tem conta. Faça login.';
   if (/Password should be at least/i.test(msg)) return 'A senha precisa de pelo menos 6 caracteres.';
-  if (/Email not confirmed/i.test(msg)) return 'E-mail ainda nao confirmado. Confirme pelo link ou desative a confirmacao no Supabase.';
+  if (/Email not confirmed/i.test(msg)) return 'E-mail ainda não confirmado. Confirme pelo link ou desative a confirmação no Supabase.';
+  if (/Signups not allowed|signup is disabled|not allowed/i.test(msg)) return 'Cadastros estão desativados. Peça acesso ao administrador.';
   if (/rate limit|too many/i.test(msg)) return 'Muitas tentativas. Espere um momento e tente de novo.';
   return msg;
 }
 function setupAuthUI() {
-  document.getElementById('auth-toggle').addEventListener('click', () => setAuthMode(authMode === 'signup' ? 'signin' : 'signup'));
+  const switchLine = document.getElementById('auth-switch-line');
+  const restricted = document.getElementById('auth-restricted');
+  if (ALLOW_SIGNUP) {
+    if (switchLine) switchLine.hidden = false;
+    if (restricted) restricted.hidden = true;
+    const tog = document.getElementById('auth-toggle');
+    if (tog) tog.addEventListener('click', () => setAuthMode(authMode === 'signup' ? 'signin' : 'signup'));
+  } else {
+    if (switchLine) switchLine.hidden = true;
+    if (restricted) restricted.hidden = false;
+    authMode = 'signin';
+  }
   document.getElementById('auth-form').addEventListener('submit', async e => {
     e.preventDefault();
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     if (!email || !password) return;
     const submit = document.getElementById('auth-submit');
+    const label = submit.textContent;
     submit.disabled = true; submit.textContent = '...'; showAuthError('');
     try {
-      if (authMode === 'signup') {
+      if (ALLOW_SIGNUP && authMode === 'signup') {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
         if (!data.session) {
-          showAuthError('Conta criada! Confirme pelo e-mail OU desative "Confirm email" no Supabase (veja o README) e entre.');
+          showAuthError('Conta criada! Confirme pelo e-mail OU desative "Confirm email" no Supabase e entre.');
           setAuthMode('signin');
         }
       } else {
@@ -1870,7 +1892,7 @@ function setupAuthUI() {
       showAuthError(translateAuthError(err && err.message));
     } finally {
       submit.disabled = false;
-      if (authMode) setAuthMode(authMode);
+      submit.textContent = label;
     }
   });
 }
