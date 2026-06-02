@@ -54,6 +54,16 @@ let tickets = [];
 let ticketComments = [];
 let ticketsRtChannel = null;
 let ticketFilter = 'all';
+// Notes editor prefs
+let noteMode = (function(){ const m = localStorage.getItem('tb_note_mode'); return (m === 'md' || m === 'rich') ? m : 'split'; })();
+let noteFocus = localStorage.getItem('tb_note_focus') === '1';
+let _td = null;
+function getTurndown() {
+  if (_td) return _td;
+  if (window.TurndownService) { try { _td = new window.TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced', emDelimiter: '*' }); } catch (e) { _td = null; } }
+  return _td;
+}
+function saveNotePrefs() { try { localStorage.setItem('tb_note_mode', noteMode); localStorage.setItem('tb_note_focus', noteFocus ? '1' : '0'); } catch (e) {} }
 
 let filters = {
   priorities: new Set(PRIORITIES),
@@ -175,6 +185,8 @@ Object.assign(I18N['pt-BR'], {
   'tk.cat.Change':'Alteração','tk.cat.Addition':'Inclusão','tk.cat.Improvement':'Melhoria','tk.cat.Bug':'Bug','tk.cat.Question':'Dúvida',
   'tk.pr.Low':'Baixa','tk.pr.Medium':'Média','tk.pr.High':'Alta','tk.pr.Critical':'Crítica',
 });
+Object.assign(I18N.en, { 'notes.split':'Split','notes.md':'Markdown','notes.rich':'Rich','notes.focus':'Focus mode','notes.exitFocus':'Exit focus' });
+Object.assign(I18N['pt-BR'], { 'notes.split':'Dividido','notes.md':'Markdown','notes.rich':'Visual','notes.focus':'Modo foco','notes.exitFocus':'Sair do foco' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -1970,22 +1982,34 @@ function renderNotes(board) {
     : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>';
 
   const banner = notesTableMissing ? `<div class="notes-banner">${escHtml(tr('notes.tableMissing'))}</div>` : '';
+  const modeBtn = (m, lbl) => `<button class="note-mode-btn${noteMode === m ? ' active' : ''}" data-nmode="${m}">${escHtml(lbl)}</button>`;
+
+  let editorBody = '';
+  if (active) {
+    if (noteMode === 'rich') {
+      editorBody = richEditorMarkup('note-rich');
+    } else if (noteMode === 'md') {
+      editorBody = `<textarea id="note-content" class="note-content" spellcheck="true" placeholder="${escHtml(tr('notes.contentPh'))}">${escHtml(active.content)}</textarea>`;
+    } else {
+      editorBody = `<textarea id="note-content" class="note-content" spellcheck="true" placeholder="${escHtml(tr('notes.contentPh'))}">${escHtml(active.content)}</textarea>
+         <div class="note-preview md-body" id="note-preview">${renderMarkdown(active.content)}</div>`;
+    }
+  }
 
   const mainHtml = active
     ? `<div class="note-head">
          <input type="text" id="note-title" class="note-title-input" value="${escHtml(active.title)}" placeholder="${escHtml(tr('notes.titlePh'))}">
          <div class="note-head-actions">
+           <div class="note-modes">${modeBtn('split', tr('notes.split'))}${modeBtn('md', tr('notes.md'))}${modeBtn('rich', tr('notes.rich'))}</div>
+           <button class="icon-btn" id="note-focus" title="${escHtml(noteFocus ? tr('notes.exitFocus') : tr('notes.focus'))}">${noteFocus ? '⤡' : '⤢'}</button>
            <button class="btn-ghost" id="note-gen">${escHtml(tr('notes.gen'))}</button>
            <button class="icon-btn" id="note-del" title="${escHtml(tr('notes.delete'))}">🗑</button>
          </div>
        </div>
-       <div class="note-split">
-         <textarea id="note-content" class="note-content" spellcheck="true" placeholder="${escHtml(tr('notes.contentPh'))}">${escHtml(active.content)}</textarea>
-         <div class="note-preview md-body" id="note-preview">${renderMarkdown(active.content)}</div>
-       </div>`
+       <div class="note-body note-mode-${noteMode}">${editorBody}</div>`
     : `<div class="notes-select">${escHtml(tr('notes.select'))}</div>`;
 
-  board.innerHTML = `${banner}<div class="notes-wrap">
+  board.innerHTML = `${banner}<div class="notes-wrap${noteFocus ? ' focus' : ''}">
       <div class="notes-list">
         <button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button>
         <div class="notes-items">${listHtml}</div>
@@ -2000,21 +2024,43 @@ function renderNotes(board) {
     const ti = document.getElementById('note-title'); if (ti) ti.focus();
   });
   board.querySelectorAll('[data-note]').forEach(el => el.addEventListener('click', () => { activeNoteId = el.dataset.note; renderBoard(); }));
+  board.querySelectorAll('[data-nmode]').forEach(b => b.addEventListener('click', () => { noteMode = b.dataset.nmode; saveNotePrefs(); renderBoard(); }));
+  const focusBtn = document.getElementById('note-focus');
+  if (focusBtn) focusBtn.addEventListener('click', () => { noteFocus = !noteFocus; saveNotePrefs(); renderBoard(); });
 
   const titleEl = document.getElementById('note-title');
-  const contentEl = document.getElementById('note-content');
-  const previewEl = document.getElementById('note-preview');
   if (titleEl) titleEl.addEventListener('input', () => {
     const n = notes.find(x => x.id === activeNoteId); if (!n) return;
     n.title = titleEl.value; saveNotes();
     const lab = board.querySelector('.note-item.active .note-item-title'); if (lab) lab.textContent = n.title || tr('notes.untitled');
   });
-  if (contentEl) contentEl.addEventListener('input', () => {
-    const n = notes.find(x => x.id === activeNoteId); if (!n) return;
-    n.content = contentEl.value;
-    if (previewEl) previewEl.innerHTML = renderMarkdown(n.content);
-    saveNotes();
-  });
+
+  if (active && noteMode === 'rich') {
+    const editor = document.getElementById('note-rich');
+    const toolbar = document.getElementById('note-rich-toolbar');
+    if (editor) {
+      editor.classList.add('md-body');
+      editor.setAttribute('data-placeholder', tr('notes.contentPh'));
+      editor.innerHTML = (active.content && active.content.trim()) ? renderMarkdown(active.content) : '';
+      setupRichEditor(editor, toolbar);
+      editor.addEventListener('input', () => {
+        const n = notes.find(x => x.id === activeNoteId); if (!n) return;
+        const td = getTurndown();
+        n.content = td ? td.turndown(sanitizeHtml(editor.innerHTML)) : (editor.innerText || '');
+        saveNotes();
+      });
+    }
+  } else if (active) {
+    const contentEl = document.getElementById('note-content');
+    const previewEl = document.getElementById('note-preview');
+    if (contentEl) contentEl.addEventListener('input', () => {
+      const n = notes.find(x => x.id === activeNoteId); if (!n) return;
+      n.content = contentEl.value;
+      if (previewEl) previewEl.innerHTML = renderMarkdown(n.content);
+      saveNotes();
+    });
+  }
+
   const delBtn = document.getElementById('note-del');
   if (delBtn) delBtn.addEventListener('click', () => {
     if (!confirm(tr('notes.deleteConfirm'))) return;
