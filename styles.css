@@ -1198,3 +1198,11 @@ button svg.lucide, a svg.lucide { pointer-events: none; }
   .topbar-toggle { display: inline-flex; }
   body.sidebar-hidden .sidebar { display: none; }
 }
+
+/* Rich editor: highlight swatches + size buttons */
+.rich-hl { width: 16px; height: 16px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(0,0,0,0.18); display: inline-block; transition: transform 0.1s; }
+.rich-hl:hover { transform: scale(1.12); }
+.rich-hl-clear { display: inline-flex; align-items: center; justify-content: center; background: var(--white); color: var(--text-light); font-size: 12px; }
+.rich-hl-label { display: inline-flex; align-items: center; color: var(--text-light); }
+[data-theme="dark"] .rich-hl { border-color: rgba(255,255,255,0.18); }
+.rich-toolbar [data-fontstep] { font-weight: 700; }

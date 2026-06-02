@@ -64,7 +64,7 @@ let hiddenCols = new Set((function(){ try { return JSON.parse(localStorage.getIt
 let _td = null;
 function getTurndown() {
   if (_td) return _td;
-  if (window.TurndownService) { try { _td = new window.TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced', emDelimiter: '*' }); } catch (e) { _td = null; } }
+  if (window.TurndownService) { try { _td = new window.TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced', emDelimiter: '*' }); if (_td.keep) _td.keep(['span', 'font', 'u', 'mark']); } catch (e) { _td = null; } }
   return _td;
 }
 function saveNotePrefs() { try { localStorage.setItem('tb_note_mode', noteMode); localStorage.setItem('tb_note_focus', noteFocus ? '1' : '0'); } catch (e) {} }
@@ -195,6 +195,8 @@ Object.assign(I18N.en, { 'an.tab':'📊 Analytics','an.title':'Analytics','an.kT
 Object.assign(I18N['pt-BR'], { 'an.tab':'📊 Análise','an.title':'Análise','an.kTotal':'Total de tarefas','an.kDone':'Concluídas','an.kOpen':'Em aberto','an.kOverdue':'Atrasadas','an.kRate':'Conclusão','an.doneWeek':'concluídas na semana','an.doneMonth':'concluídas (30 dias)','an.dueSoon':'vencem em 7 dias','an.byStatus':'Tarefas por status','an.byPriority':'Tarefas por prioridade','an.byGroup':'Tarefas por grupo','an.completions':'Concluídas por semana (últimas 8)','an.subtasks':'Subtarefas','an.subtaskProgress':'{d} de {t} subtarefas concluídas','an.notes':'Notas','an.noteCount':'Notas','an.noteWords':'Palavras escritas','an.lastEdited':'Última edição','an.never':'—','an.tickets':'Chamados','an.tkOpen':'Abertos','an.tkDone':'Resolvidos','an.byCategory':'Por categoria','an.noData':'Sem dados ainda.','an.completionsHint':'Registrado a partir de agora.' });
 Object.assign(I18N.en, { 'tb.changePhoto':'Change photo','tb.removePhoto':'Remove photo','tb.toggleSidebar':'Show / hide the sidebar','cols.btn':'Columns','cols.title':'Show columns' });
 Object.assign(I18N['pt-BR'], { 'tb.changePhoto':'Trocar foto','tb.removePhoto':'Remover foto','tb.toggleSidebar':'Mostrar / ocultar a barra lateral','cols.btn':'Colunas','cols.title':'Mostrar colunas' });
+Object.assign(I18N.en, { 'rt.smaller':'Smaller text','rt.bigger':'Bigger text','rt.highlight':'Highlight','rt.clearHl':'Clear highlight' });
+Object.assign(I18N['pt-BR'], { 'rt.smaller':'Diminuir fonte','rt.bigger':'Aumentar fonte','rt.highlight':'Marca-texto','rt.clearHl':'Remover marca-texto' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -332,8 +334,12 @@ function sanitizeHtml(html) {
         const n = attr.name.toLowerCase();
         if (n === 'style') {
           const color = child.style.color;
+          const bg = child.style.backgroundColor;
+          const fs = child.style.fontSize;
           child.removeAttribute('style');
           if (color) child.style.color = color;
+          if (bg) child.style.backgroundColor = bg;
+          if (fs) child.style.fontSize = fs;
         } else if (n === 'color' && child.tagName === 'FONT') {
           // keep font color
         } else if (n === 'href' && child.tagName === 'A') {
@@ -355,6 +361,7 @@ function richToStored(editor) {
 }
 function setupRichEditor(editor, toolbar) {
   try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+  let fontLevel = 3;
   const currentBlockTag = () => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return '';
@@ -366,7 +373,7 @@ function setupRichEditor(editor, toolbar) {
     return '';
   };
   toolbar.addEventListener('mousedown', e => {
-    if (e.target.closest('button, .rich-color')) e.preventDefault();
+    if (e.target.closest('button, .rich-color, .rich-hl')) e.preventDefault();
   });
   toolbar.addEventListener('click', e => {
     const colorEl = e.target.closest('.rich-color');
@@ -376,10 +383,21 @@ function setupRichEditor(editor, toolbar) {
       document.execCommand('foreColor', false, colorEl.dataset.color);
       return;
     }
+    const hlEl = e.target.closest('.rich-hl');
+    if (hlEl) {
+      editor.focus();
+      try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
+      try { document.execCommand('hiliteColor', false, hlEl.dataset.hl); } catch (_) { document.execCommand('backColor', false, hlEl.dataset.hl); }
+      return;
+    }
     const btn = e.target.closest('button');
     if (!btn) return;
     editor.focus();
-    if (btn.dataset.cmd) {
+    if (btn.dataset.fontstep) {
+      fontLevel = Math.max(1, Math.min(7, fontLevel + parseInt(btn.dataset.fontstep)));
+      try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
+      document.execCommand('fontSize', false, fontLevel);
+    } else if (btn.dataset.cmd) {
       document.execCommand(btn.dataset.cmd, false, null);
     } else if (btn.dataset.block) {
       const tag = btn.dataset.block.toUpperCase();
@@ -415,6 +433,8 @@ function richEditorMarkup(id) {
       <button type="button" data-cmd="bold" title="${escHtml(tr('rt.bold'))}"><b>B</b></button>
       <button type="button" data-cmd="italic" title="${escHtml(tr('rt.italic'))}"><i>I</i></button>
       <button type="button" data-cmd="underline" title="${escHtml(tr('rt.underline'))}"><u>U</u></button>
+      <button type="button" data-fontstep="-1" title="${escHtml(tr('rt.smaller'))}"><i data-lucide="a-arrow-down"></i></button>
+      <button type="button" data-fontstep="1" title="${escHtml(tr('rt.bigger'))}"><i data-lucide="a-arrow-up"></i></button>
       <span class="rich-sep"></span>
       <button type="button" data-block="h1" title="${escHtml(tr('rt.h1'))}">H1</button>
       <button type="button" data-block="h2" title="${escHtml(tr('rt.h2'))}">H2</button>
@@ -426,6 +446,13 @@ function richEditorMarkup(id) {
       <span class="rich-color" data-color="#00c875" style="background:#00c875" title="${escHtml(tr('rt.green'))}"></span>
       <span class="rich-color" data-color="#579bfc" style="background:#579bfc" title="${escHtml(tr('rt.blue'))}"></span>
       <span class="rich-color" data-color="#6161ff" style="background:#6161ff" title="${escHtml(tr('rt.purple'))}"></span>
+      <span class="rich-sep"></span>
+      <span class="rich-hl-label" title="${escHtml(tr('rt.highlight'))}"><i data-lucide="highlighter"></i></span>
+      <span class="rich-hl" data-hl="#fff59d" style="background:#fff59d" title="${escHtml(tr('rt.highlight'))}"></span>
+      <span class="rich-hl" data-hl="#c5f7c8" style="background:#c5f7c8" title="${escHtml(tr('rt.highlight'))}"></span>
+      <span class="rich-hl" data-hl="#ffc9de" style="background:#ffc9de" title="${escHtml(tr('rt.highlight'))}"></span>
+      <span class="rich-hl" data-hl="#bfe0ff" style="background:#bfe0ff" title="${escHtml(tr('rt.highlight'))}"></span>
+      <span class="rich-hl rich-hl-clear" data-hl="transparent" title="${escHtml(tr('rt.clearHl'))}">⌀</span>
       <span class="rich-sep"></span>
       <button type="button" data-link="1" title="${escHtml(tr('rt.link'))}">🔗</button>
       <button type="button" data-cmd="removeFormat" title="${escHtml(tr('rt.clear'))}">⌫</button>
