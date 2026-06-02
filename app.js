@@ -51,6 +51,9 @@ let notesTableMissing = false;
 let presentations = [];
 let activeDeckId = null;
 let decksTableMissing = false;
+let decksOmitTags = false;
+let deckSearch = '';
+let deckSort = (function(){ const v = localStorage.getItem('tb_deck_sort'); return (v === 'old' || v === 'az') ? v : 'new'; })();
 // Tickets (admin)
 let USER_ROLE = 'requester';
 let tickets = [];
@@ -202,6 +205,8 @@ Object.assign(I18N.en, { 'rt.smaller':'Smaller text','rt.bigger':'Bigger text','
 Object.assign(I18N['pt-BR'], { 'rt.smaller':'Diminuir fonte','rt.bigger':'Aumentar fonte','rt.highlight':'Marca-texto','rt.clearHl':'Remover marca-texto' });
 Object.assign(I18N.en, { 'pres.tab':'Presentations','pres.import':'Import HTML','pres.empty':'No presentations yet. Import an HTML slide deck.','pres.untitled':'Untitled deck','pres.titlePh':'Presentation title','pres.present':'Present','pres.delete':'Delete presentation','pres.deleteConfirm':'Delete this presentation?','pres.select':'Select a presentation, or import an HTML deck.','pres.tableMissing':'One-time setup: run supabase/presentations.sql in your Supabase SQL Editor to sync presentations to the cloud. (Cached locally meanwhile.)' });
 Object.assign(I18N['pt-BR'], { 'pres.tab':'Apresentações','pres.import':'Importar HTML','pres.empty':'Nenhuma apresentação ainda. Importe um slide em HTML.','pres.untitled':'Apresentação sem título','pres.titlePh':'Título da apresentação','pres.present':'Apresentar','pres.delete':'Excluir apresentação','pres.deleteConfirm':'Excluir esta apresentação?','pres.select':'Selecione uma apresentação ou importe um HTML.','pres.tableMissing':'Configuração única: rode supabase/presentations.sql no SQL Editor para sincronizar na nuvem. (Cache local enquanto isso.)' });
+Object.assign(I18N.en, { 'pres.search':'Search presentations…','pres.newest':'Newest','pres.oldest':'Oldest','pres.az':'Title A–Z','pres.tagsPh':'Add tag…','pres.noResults':'No matches.' });
+Object.assign(I18N['pt-BR'], { 'pres.search':'Buscar apresentações…','pres.newest':'Mais recentes','pres.oldest':'Mais antigas','pres.az':'Título A–Z','pres.tagsPh':'Adicionar tag…','pres.noResults':'Nenhum resultado.' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -1927,7 +1932,14 @@ async function flushCloudSave() {
       dirty.tasks = false;
     }
     if (dirty.notes)   { try { await pushTable('notes', notes.map(noteToRow), notes.map(n => n.id)); notesTableMissing = false; } catch (e) { notesTableMissing = true; console.warn('[notes] push failed:', e && e.message); } dirty.notes = false; }
-    if (dirty.presentations) { try { await pushTable('presentations', presentations.map(deckToRow), presentations.map(d => d.id)); decksTableMissing = false; } catch (e) { decksTableMissing = true; console.warn('[presentations] push failed:', e && e.message); } dirty.presentations = false; }
+    if (dirty.presentations) {
+      try { await pushTable('presentations', presentations.map(deckToRow), presentations.map(d => d.id)); decksTableMissing = false; }
+      catch (e) {
+        if (/tags/i.test((e && e.message) || '') && !decksOmitTags) { decksOmitTags = true; try { await pushTable('presentations', presentations.map(deckToRow), presentations.map(d => d.id)); decksTableMissing = false; } catch (e2) { decksTableMissing = true; } }
+        else { decksTableMissing = true; console.warn('[presentations] push failed:', e && e.message); }
+      }
+      dirty.presentations = false;
+    }
     lastPushAt = (window.performance ? performance.now() : Date.now());
     setSyncStatus('synced');
   } catch (e) {
@@ -2428,8 +2440,8 @@ function renderAnalytics(board) {
 // ============================================================
 //  Presentations (imported HTML slide decks)
 // ============================================================
-function deckToRow(d, i) { return { id: d.id, user_id: USER_ID, title: d.title || '', html: d.html || '', position: i, created_at: new Date(d.created || Date.now()).toISOString() }; }
-function rowToDeck(r) { return { id: r.id, title: r.title || '', html: r.html || '', created: r.created_at ? new Date(r.created_at).getTime() : Date.now() }; }
+function deckToRow(d, i) { const row = { id: d.id, user_id: USER_ID, title: d.title || '', html: d.html || '', position: i, created_at: new Date(d.created || Date.now()).toISOString() }; if (!decksOmitTags) row.tags = Array.isArray(d.tags) ? d.tags : []; return row; }
+function rowToDeck(r) { return { id: r.id, title: r.title || '', html: r.html || '', tags: Array.isArray(r.tags) ? r.tags : [], created: r.created_at ? new Date(r.created_at).getTime() : Date.now() }; }
 function saveDecks() { cacheSet('presentations', presentations); scheduleCloudSave('presentations'); }
 function deckTitleFromHtml(html, fallback) {
   const m = (html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -2439,51 +2451,114 @@ function deckTitleFromHtml(html, fallback) {
 }
 function renderPresentations(board) {
   if (activeDeckId && !presentations.find(d => d.id === activeDeckId)) activeDeckId = null;
-  if (!activeDeckId && presentations.length) activeDeckId = presentations[0].id;
+
+  function computeList() {
+    const q = deckSearch.trim().toLowerCase();
+    let list = presentations.slice();
+    if (q) list = list.filter(d => (d.title || '').toLowerCase().includes(q) || (d.tags || []).some(t => String(t).toLowerCase().includes(q)));
+    if (deckSort === 'old') list.sort((a, b) => (a.created || 0) - (b.created || 0));
+    else if (deckSort === 'az') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    else list.sort((a, b) => (b.created || 0) - (a.created || 0));
+    return list;
+  }
+  if (!activeDeckId) { const l0 = computeList(); if (l0.length) activeDeckId = l0[0].id; }
   const active = presentations.find(d => d.id === activeDeckId) || null;
 
-  const listHtml = presentations.length
-    ? presentations.map(d => '<button class="note-item' + (d.id === activeDeckId ? ' active' : '') + '" data-deck="' + escHtml(d.id) + '">' +
-        '<span class="note-item-title">' + escHtml(d.title || tr('pres.untitled')) + '</span>' +
-        '<span class="note-item-snippet">' + escHtml(new Date(d.created || Date.now()).toLocaleDateString(localeFor(), { day: 'numeric', month: 'short', year: 'numeric' })) + '</span>' +
-      '</button>').join('')
-    : '<div class="notes-empty">' + escHtml(tr('pres.empty')) + '</div>';
+  function tagChip(t) { return '<span class="deck-tag" data-tag="' + escHtml(t) + '">' + escHtml(t) + '</span>'; }
+  function listItemsHtml() {
+    if (!presentations.length) return '<div class="notes-empty">' + escHtml(tr('pres.empty')) + '</div>';
+    const list = computeList();
+    if (!list.length) return '<div class="notes-empty">' + escHtml(tr('pres.noResults')) + '</div>';
+    return list.map(d => '<button class="note-item' + (d.id === activeDeckId ? ' active' : '') + '" data-deck="' + escHtml(d.id) + '">' +
+      '<span class="note-item-title">' + escHtml(d.title || tr('pres.untitled')) + '</span>' +
+      '<span class="note-item-snippet">' + escHtml(new Date(d.created || Date.now()).toLocaleDateString(localeFor(), { day: 'numeric', month: 'short', year: 'numeric' })) + '</span>' +
+      ((d.tags && d.tags.length) ? '<span class="deck-tags">' + d.tags.map(tagChip).join('') + '</span>' : '') +
+    '</button>').join('');
+  }
   const banner = decksTableMissing ? '<div class="notes-banner">' + escHtml(tr('pres.tableMissing')) + '</div>' : '';
-
+  const toolbar = presentations.length
+    ? '<div class="deck-toolbar">' +
+        '<div class="deck-search"><i data-lucide="search"></i><input type="text" id="deck-search" placeholder="' + escHtml(tr('pres.search')) + '" value="' + escHtml(deckSearch) + '"></div>' +
+        '<select class="sort-select" id="deck-sort">' +
+          '<option value="new"' + (deckSort === 'new' ? ' selected' : '') + '>' + escHtml(tr('pres.newest')) + '</option>' +
+          '<option value="old"' + (deckSort === 'old' ? ' selected' : '') + '>' + escHtml(tr('pres.oldest')) + '</option>' +
+          '<option value="az"' + (deckSort === 'az' ? ' selected' : '') + '>' + escHtml(tr('pres.az')) + '</option>' +
+        '</select>' +
+      '</div>'
+    : '';
+  function tagsEditorHtml() {
+    if (!active) return '';
+    return '<div class="deck-tags-edit" id="deck-tags-edit"><i data-lucide="tag"></i>' +
+      (active.tags || []).map(t => '<span class="deck-tag editable" data-removetag="' + escHtml(t) + '">' + escHtml(t) + ' <i data-lucide="x"></i></span>').join('') +
+      '<input type="text" id="deck-tag-input" placeholder="' + escHtml(tr('pres.tagsPh')) + '"></div>';
+  }
   const mainHtml = active
     ? '<div class="note-head"><input type="text" id="deck-title" class="note-title-input" value="' + escHtml(active.title) + '" placeholder="' + escHtml(tr('pres.titlePh')) + '">' +
         '<div class="note-head-actions">' +
           '<button class="btn-ghost" id="deck-present"><i data-lucide="maximize"></i> <span>' + escHtml(tr('pres.present')) + '</span></button>' +
           '<button class="icon-btn" id="deck-del" title="' + escHtml(tr('pres.delete')) + '"><i data-lucide="trash-2"></i></button>' +
         '</div></div>' +
+        tagsEditorHtml() +
         '<div class="deck-frame-wrap"><iframe id="deck-frame" class="deck-frame" sandbox="allow-scripts allow-popups allow-modals allow-forms" referrerpolicy="no-referrer"></iframe></div>'
     : '<div class="notes-select">' + escHtml(tr('pres.select')) + '</div>';
 
   board.innerHTML = banner + '<div class="notes-wrap">' +
       '<div class="notes-list">' +
         '<label class="btn-primary notes-new-btn import-file-btn" style="text-align:center"><i data-lucide="upload"></i> ' + escHtml(tr('pres.import')) + '<input type="file" id="deck-import" accept=".html,.htm,text/html" hidden></label>' +
-        '<div class="notes-items">' + listHtml + '</div>' +
+        toolbar +
+        '<div class="notes-items">' + listItemsHtml() + '</div>' +
       '</div>' +
       '<div class="notes-main">' + mainHtml + '</div>' +
     '</div>';
 
   if (active) { const fr = document.getElementById('deck-frame'); if (fr) fr.srcdoc = active.html; }
 
+  function bindListItems() {
+    board.querySelectorAll('[data-deck]').forEach(el => el.addEventListener('click', () => { activeDeckId = el.dataset.deck; renderBoard(); }));
+    board.querySelectorAll('.note-item [data-tag]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); deckSearch = el.dataset.tag; updateList(); const se = document.getElementById('deck-search'); if (se) se.value = deckSearch; }));
+  }
+  function updateList() { const items = board.querySelector('.notes-items'); if (items) { items.innerHTML = listItemsHtml(); bindListItems(); refreshIcons(); } }
+  bindListItems();
+
   const imp = document.getElementById('deck-import');
   if (imp) imp.addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     let html = '';
     try { html = await f.text(); } catch (err) { alert('Could not read file.'); return; }
-    const d = { id: 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), title: deckTitleFromHtml(html, f.name.replace(/\.[^.]+$/, '')), html: html, created: Date.now() };
-    presentations.unshift(d); activeDeckId = d.id; saveDecks(); renderBoard();
+    const d = { id: 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), title: deckTitleFromHtml(html, f.name.replace(/\.[^.]+$/, '')), html: html, tags: [], created: Date.now() };
+    presentations.unshift(d); activeDeckId = d.id; deckSearch = ''; saveDecks(); renderBoard();
   });
-  board.querySelectorAll('[data-deck]').forEach(el => el.addEventListener('click', () => { activeDeckId = el.dataset.deck; renderBoard(); }));
+  const searchEl = document.getElementById('deck-search');
+  if (searchEl) searchEl.addEventListener('input', () => { deckSearch = searchEl.value; updateList(); });
+  const sortEl = document.getElementById('deck-sort');
+  if (sortEl) sortEl.addEventListener('change', () => { deckSort = sortEl.value; try { localStorage.setItem('tb_deck_sort', deckSort); } catch (e) {} updateList(); });
+
   const titleEl = document.getElementById('deck-title');
   if (titleEl) titleEl.addEventListener('input', () => {
     const d = presentations.find(x => x.id === activeDeckId); if (!d) return;
     d.title = titleEl.value; saveDecks();
     const lab = board.querySelector('.note-item.active .note-item-title'); if (lab) lab.textContent = d.title || tr('pres.untitled');
   });
+  function refreshTagsEditor() { const box = document.getElementById('deck-tags-edit'); if (box) { box.outerHTML = tagsEditorHtml(); bindTags(); refreshIcons(); } updateList(); }
+  function bindTags() {
+    const tagInput = document.getElementById('deck-tag-input');
+    if (tagInput) tagInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const d = presentations.find(x => x.id === activeDeckId); if (!d) return;
+        if (!Array.isArray(d.tags)) d.tags = [];
+        const v = tagInput.value.replace(/,/g, '').trim();
+        if (v && !d.tags.includes(v)) { d.tags.push(v); saveDecks(); refreshTagsEditor(); const ti = document.getElementById('deck-tag-input'); if (ti) ti.focus(); }
+        else tagInput.value = '';
+      }
+    });
+    board.querySelectorAll('[data-removetag]').forEach(el => el.addEventListener('click', () => {
+      const d = presentations.find(x => x.id === activeDeckId); if (!d || !Array.isArray(d.tags)) return;
+      d.tags = d.tags.filter(t => t !== el.dataset.removetag); saveDecks(); refreshTagsEditor();
+    }));
+  }
+  bindTags();
+
   const delBtn = document.getElementById('deck-del');
   if (delBtn) delBtn.addEventListener('click', () => {
     if (!confirm(tr('pres.deleteConfirm'))) return;
@@ -2495,6 +2570,7 @@ function renderPresentations(board) {
     if (fr && fr.requestFullscreen) fr.requestFullscreen().catch(() => {});
     else if (fr && fr.webkitRequestFullscreen) fr.webkitRequestFullscreen();
   });
+  refreshIcons();
 }
 
 // ============================================================

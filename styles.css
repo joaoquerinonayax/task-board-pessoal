@@ -1228,3 +1228,23 @@ body.slides-active #groupby-btn { display: none; }
 .caret-ic { width: 13px; height: 13px; opacity: 0.55; }
 .auth-features > span { display: inline-flex; align-items: center; gap: 5px; }
 .auth-features > span > span { background: none; border: 0; padding: 0; }
+
+/* ===============================================
+   PRESENTATIONS — search / sort / tags
+   =============================================== */
+.deck-toolbar { display: flex; gap: 6px; align-items: center; }
+.deck-search { position: relative; flex: 1; display: flex; align-items: center; min-width: 0; }
+.deck-search svg.lucide { position: absolute; left: 9px; color: var(--text-light); width: 14px; height: 14px; pointer-events: none; }
+.deck-search input { width: 100%; padding: 7px 10px 7px 28px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 12.5px; background: var(--white); color: var(--text); }
+.deck-search input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-soft); }
+.deck-toolbar .sort-select { font-size: 12px; padding: 7px 8px; flex-shrink: 0; }
+.deck-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.deck-tag { font-size: 10px; font-weight: 600; color: var(--purple); background: var(--purple-soft); padding: 1px 8px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+.deck-tag:hover { filter: brightness(0.96); }
+.deck-tags-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+.deck-tags-edit > svg.lucide { color: var(--text-light); }
+.deck-tag.editable { display: inline-flex; align-items: center; gap: 3px; cursor: default; }
+.deck-tag.editable svg.lucide { width: 11px; height: 11px; cursor: pointer; opacity: 0.7; }
+.deck-tag.editable svg.lucide:hover { opacity: 1; }
+#deck-tag-input { border: 0; background: transparent; font-family: inherit; font-size: 12px; color: var(--text); padding: 3px 4px; min-width: 90px; flex: 1; }
+#deck-tag-input:focus { outline: none; }

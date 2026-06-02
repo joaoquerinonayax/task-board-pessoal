@@ -10,10 +10,13 @@ create table if not exists public.presentations (
   user_id     uuid not null references auth.users(id) on delete cascade default auth.uid(),
   title       text not null default '',
   html        text not null default '',
+  tags        jsonb not null default '[]'::jsonb,
   position    integer not null default 0,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+-- (if the table already existed without it)
+alter table public.presentations add column if not exists tags jsonb not null default '[]'::jsonb;
 create index if not exists presentations_user_idx on public.presentations(user_id);
 
 alter table public.presentations enable row level security;

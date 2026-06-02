@@ -4,7 +4,7 @@ Quadro de tarefas (Kanban / Tabela / Cards / Calendário) que roda 100% no naveg
 hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grátis).
 
 - 🗂️ Seis visões: **Kanban**, **Tabela**, **Cards**, **Calendário**, **Notas** e **Apresentações**
-- 🖼️ **Apresentações**: importe slide decks em **HTML** e visualize/apresente tudo centralizado
+- 🖼️ **Apresentações**: importe slide decks em **HTML**, com **busca, ordenação e tags**, e apresente em tela cheia
 - 🌐 **Inglês por padrão**, com troca para **PT-BR** em um clique (login e menu de conta)
 - 📝 **Notas em Markdown** com preview ao vivo e **geração de tarefas** a partir da nota
 - 🎫 **Sistema de chamados**: portal para o time pedir mudanças no Power BI; você gerencia no app
