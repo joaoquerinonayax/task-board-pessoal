@@ -13,7 +13,7 @@ hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grá
 - ☁️ **Sync na nuvem** com cache local (abre rápido e aguenta ficar offline por um tempo)
 - ⚡ **Tempo real**: mudou num dispositivo, aparece nos outros abertos
 - 🎨 Ícones **Lucide**, **avatar** com foto, **modo foco**, **ocultar/mostrar colunas** e barra lateral
-- 🎨 Tema claro/escuro, prioridades, prazos, subtarefas, grupos, colunas personalizáveis
+- 🎨 **6 temas**: Light, Dark, Midnight, Forest, Ocean, Rosé (seletor no topo) + prioridades, prazos, subtarefas, grupos
 - ⤓ Export/Import JSON e CSV
 
 ---

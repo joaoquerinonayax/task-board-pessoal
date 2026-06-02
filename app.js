@@ -207,6 +207,8 @@ Object.assign(I18N.en, { 'pres.tab':'Presentations','pres.import':'Import HTML',
 Object.assign(I18N['pt-BR'], { 'pres.tab':'Apresentações','pres.import':'Importar HTML','pres.empty':'Nenhuma apresentação ainda. Importe um slide em HTML.','pres.untitled':'Apresentação sem título','pres.titlePh':'Título da apresentação','pres.present':'Apresentar','pres.delete':'Excluir apresentação','pres.deleteConfirm':'Excluir esta apresentação?','pres.select':'Selecione uma apresentação ou importe um HTML.','pres.tableMissing':'Configuração única: rode supabase/presentations.sql no SQL Editor para sincronizar na nuvem. (Cache local enquanto isso.)' });
 Object.assign(I18N.en, { 'pres.search':'Search presentations…','pres.newest':'Newest','pres.oldest':'Oldest','pres.az':'Title A–Z','pres.tagsPh':'Add tag…','pres.noResults':'No matches.' });
 Object.assign(I18N['pt-BR'], { 'pres.search':'Buscar apresentações…','pres.newest':'Mais recentes','pres.oldest':'Mais antigas','pres.az':'Título A–Z','pres.tagsPh':'Adicionar tag…','pres.noResults':'Nenhum resultado.' });
+Object.assign(I18N.en, { 'theme.light':'Light','theme.dark':'Dark','theme.midnight':'Midnight','theme.forest':'Forest','theme.ocean':'Ocean','theme.rose':'Rosé' });
+Object.assign(I18N['pt-BR'], { 'theme.light':'Claro','theme.dark':'Escuro','theme.midnight':'Meia-noite','theme.forest':'Floresta','theme.ocean':'Oceano','theme.rose':'Rosé' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -2637,16 +2639,51 @@ function readAvatarFile(file, cb) {
 //  Theme
 // ============================================================
 const STORE_THEME = 'tb_theme';
+const THEMES = [
+  { id: 'light',    dark: false, bg: '#f6f7fb', accent: '#6161ff' },
+  { id: 'dark',     dark: true,  bg: '#15171f', accent: '#7b7bff' },
+  { id: 'midnight', dark: true,  bg: '#0f1226', accent: '#8b9cff' },
+  { id: 'forest',   dark: true,  bg: '#0e1a15', accent: '#3fbf86' },
+  { id: 'ocean',    dark: false, bg: '#eef6fb', accent: '#0ea5b7' },
+  { id: 'rose',     dark: false, bg: '#fbf1f3', accent: '#e0608a' },
+];
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(STORE_THEME, theme);
-  const btn = document.getElementById('theme-btn');
-  if (btn) { btn.innerHTML = '<i data-lucide="' + (theme === 'dark' ? 'sun' : 'moon') + '"></i>'; refreshIcons(); }
+  const t = THEMES.find(x => x.id === theme) || THEMES[0];
+  document.documentElement.setAttribute('data-theme', t.id);
+  document.documentElement.setAttribute('data-mode', t.dark ? 'dark' : 'light');
+  try { localStorage.setItem(STORE_THEME, t.id); } catch (e) {}
+  updateThemeActive();
 }
 function loadTheme() {
   let theme = localStorage.getItem(STORE_THEME);
-  if (!theme) theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  if (!theme || !THEMES.find(t => t.id === theme)) theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   applyTheme(theme);
+}
+function updateThemeActive() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.querySelectorAll('[data-theme-check]').forEach(el => { el.style.visibility = (el.getAttribute('data-theme-check') === cur) ? 'visible' : 'hidden'; });
+}
+function buildThemeMenu() {
+  const menu = document.getElementById('theme-menu');
+  if (!menu) return;
+  menu.innerHTML = THEMES.map(t =>
+    '<button class="dropdown-item theme-opt" data-theme-opt="' + t.id + '">' +
+      '<span class="theme-swatch" style="background:' + t.bg + ';border-color:' + t.accent + '"><span style="background:' + t.accent + '"></span></span>' +
+      '<span>' + escHtml(tr('theme.' + t.id)) + '</span>' +
+      '<span class="theme-check" data-theme-check="' + t.id + '"><i data-lucide="check"></i></span>' +
+    '</button>'
+  ).join('');
+  refreshIcons();
+  updateThemeActive();
+}
+function setupThemeMenu() {
+  const btn = document.getElementById('theme-btn');
+  const menu = document.getElementById('theme-menu');
+  if (!btn || !menu) return;
+  buildThemeMenu();
+  btn.addEventListener('click', e => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+  document.addEventListener('click', e => { if (!e.target.closest('#theme-menu') && !e.target.closest('#theme-btn')) menu.hidden = true; });
+  menu.addEventListener('click', e => { const o = e.target.closest('[data-theme-opt]'); if (o) { applyTheme(o.getAttribute('data-theme-opt')); menu.hidden = true; } });
 }
 
 // ============================================================
@@ -2840,9 +2877,7 @@ function setupStaticUI() {
   attachBoardDragHandlers();
   setupImport();
   setupAccountMenu();
-  document.getElementById('theme-btn').addEventListener('click', () => {
-    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-  });
+  setupThemeMenu();
   document.getElementById('add-group-side').addEventListener('click', () => openGroupModal(null));
   document.getElementById('groupby-btn').addEventListener('click', () => { groupBy = !groupBy; saveGroupBy(); renderBoard(); });
   setupKeyboardShortcuts();
