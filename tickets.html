@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Power BI Requests</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===================== Login ===================== -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo"><span class="auth-logo-dots"><i class="d r"></i><i class="d o"></i><i class="d p"></i></span></div>
+    <h1 class="auth-brandname">Power BI<span>Requests</span></h1>
+
+    <div id="auth-loading" class="auth-loading"><span class="auth-spinner"></span> <span data-i18n="p.loading">Loading…</span></div>
+
+    <form id="auth-form" autocomplete="on" hidden>
+      <h2 data-i18n="p.signinTitle">Sign in</h2>
+      <p class="auth-formsub" data-i18n="p.signinSub">Submit and track your Power BI requests</p>
+      <div class="auth-field">
+        <label for="auth-email" data-i18n="p.email">E-mail</label>
+        <input type="email" id="auth-email" autocomplete="email" placeholder="you@company.com" required>
+      </div>
+      <div class="auth-field">
+        <label for="auth-password" data-i18n="p.password">Password</label>
+        <input type="password" id="auth-password" autocomplete="current-password" minlength="6" required>
+      </div>
+      <div class="auth-error" id="auth-error" hidden></div>
+      <button type="submit" class="btn-primary auth-btn" id="auth-submit" data-i18n="p.signin">Sign in</button>
+      <p class="auth-restricted" data-i18n="p.invite">🔒 Access by invitation — ask the admin to add you.</p>
+    </form>
+
+    <div class="auth-error" id="auth-config-error" data-i18n="p.config" hidden>⚠️ Supabase not configured. Edit config.js (see README.md).</div>
+
+    <div class="auth-lang">
+      <button type="button" data-setlang="en">EN</button>
+      <button type="button" data-setlang="pt-BR">PT-BR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Portal ===================== -->
+<div id="portal-root" hidden>
+  <header class="portal-top">
+    <div class="portal-badge"><span class="auth-logo-dots"><i class="d r"></i><i class="d o"></i><i class="d p"></i></span></div>
+    <div class="portal-brand" data-i18n="p.brand">Power BI Requests</div>
+    <div class="topbar-spacer"></div>
+    <span class="acct-lang portal-lang">
+      <button type="button" data-setlang="en">EN</button>
+      <button type="button" data-setlang="pt-BR">PT</button>
+    </span>
+    <button class="btn-primary" id="new-req-btn" data-i18n="p.new">+ New request</button>
+    <div class="dropdown">
+      <button class="account-btn" id="p-account" title="Account">?</button>
+      <div class="dropdown-menu" id="p-account-menu" hidden style="min-width:200px">
+        <div class="account-email" id="p-email"></div>
+        <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
+        <button class="dropdown-item" id="p-signout" data-i18n="p.signout">⎋ Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="portal-wrap">
+    <aside class="ticket-list" id="ticket-list"></aside>
+    <main class="ticket-detail" id="ticket-detail"></main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="config.js"></script>
+<script src="tickets.js"></script>
+</body>
+</html>

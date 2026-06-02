@@ -48,6 +48,12 @@ let columnDragId = null;         // id of column being dragged
 let notes = [];
 let activeNoteId = null;
 let notesTableMissing = false;
+// Tickets (admin)
+let USER_ROLE = 'requester';
+let tickets = [];
+let ticketComments = [];
+let ticketsRtChannel = null;
+let ticketFilter = 'all';
 
 let filters = {
   priorities: new Set(PRIORITIES),
@@ -151,6 +157,24 @@ const I18N = {
 };
 I18N.en.weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 I18N['pt-BR'].weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+Object.assign(I18N.en, {
+  'tk.tab':'🎫 Tickets','tk.title':'Tickets','tk.all':'All','tk.empty':'No tickets match.','tk.openCount':'open',
+  'tk.status':'Status','tk.priority':'Priority','tk.comments':'Comments','tk.noComments':'No comments yet.',
+  'tk.reply':'Reply to the requester…','tk.send':'Send','tk.close':'Close',
+  'tk.convert':'⤴ Convert to task','tk.converted':'✓ Converted to a task','tk.convertedMsg':'Added to your board (To Do).','tk.youAdmin':'You (admin)',
+  'tk.st.Open':'Open','tk.st.In progress':'In progress','tk.st.Waiting':'Waiting','tk.st.Done':'Done','tk.st.Rejected':'Rejected',
+  'tk.cat.Change':'Change','tk.cat.Addition':'Addition','tk.cat.Improvement':'Improvement','tk.cat.Bug':'Bug','tk.cat.Question':'Question',
+  'tk.pr.Low':'Low','tk.pr.Medium':'Medium','tk.pr.High':'High','tk.pr.Critical':'Critical',
+});
+Object.assign(I18N['pt-BR'], {
+  'tk.tab':'🎫 Chamados','tk.title':'Chamados','tk.all':'Todos','tk.empty':'Nenhum chamado.','tk.openCount':'em aberto',
+  'tk.status':'Status','tk.priority':'Prioridade','tk.comments':'Comentários','tk.noComments':'Nenhum comentário ainda.',
+  'tk.reply':'Responder ao solicitante…','tk.send':'Enviar','tk.close':'Fechar',
+  'tk.convert':'⤴ Converter em tarefa','tk.converted':'✓ Convertido em tarefa','tk.convertedMsg':'Adicionado ao seu board (To Do).','tk.youAdmin':'Você (admin)',
+  'tk.st.Open':'Aberto','tk.st.In progress':'Em andamento','tk.st.Waiting':'Aguardando','tk.st.Done':'Concluído','tk.st.Rejected':'Recusado',
+  'tk.cat.Change':'Alteração','tk.cat.Addition':'Inclusão','tk.cat.Improvement':'Melhoria','tk.cat.Bug':'Bug','tk.cat.Question':'Dúvida',
+  'tk.pr.Low':'Baixa','tk.pr.Medium':'Média','tk.pr.High':'Alta','tk.pr.Critical':'Crítica',
+});
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -227,7 +251,7 @@ function saveCollapsed() { localStorage.setItem(STORE_COLLAPSED, JSON.stringify(
 
 function loadView() {
   const v = localStorage.getItem(STORE_VIEW);
-  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes') currentView = v;
+  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes' || v === 'tickets') currentView = v;
 }
 function saveView() { localStorage.setItem(STORE_VIEW, currentView); }
 
@@ -489,12 +513,15 @@ function subtaskChipHtml(t) {
 // ============================================================
 function renderBoard() {
   const board = document.getElementById('board');
+  if (currentView === 'tickets' && USER_ROLE !== 'admin') currentView = 'kanban';
   board.className = 'board view-' + currentView + ((groupBy && currentView === 'cards') ? ' grouped' : '');
   document.body.classList.toggle('notes-active', currentView === 'notes');
+  document.body.classList.toggle('tickets-active', currentView === 'tickets');
   if      (currentView === 'kanban')   renderKanban(board);
   else if (currentView === 'table')    renderTable(board);
   else if (currentView === 'calendar') renderCalendar(board);
   else if (currentView === 'notes')    renderNotes(board);
+  else if (currentView === 'tickets')  renderTickets(board);
   else                                 renderCards(board);
   renderOverview();
   renderGroupsList();
@@ -2046,6 +2073,150 @@ function openGenerateTasksModal(noteId) {
 }
 
 // ============================================================
+//  Tickets — admin (manage all team requests)
+// ============================================================
+const TK_STATUSES = ['Open', 'In progress', 'Waiting', 'Done', 'Rejected'];
+const TK_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+
+function tkMd(md) {
+  if (!md || !md.trim()) return '';
+  let h = null;
+  if (window.marked && window.marked.parse) { try { h = window.marked.parse(md, { breaks: true, gfm: true }); } catch (e) { h = null; } }
+  if (h == null) h = '<p>' + escHtml(md).replace(/\n/g, '<br>') + '</p>';
+  return sanitizeHtml(h);
+}
+function tkDay(iso) { try { return new Date(iso).toLocaleDateString(localeFor(), { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } }
+function tkDateTime(iso) { try { return new Date(iso).toLocaleString(localeFor(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+function tkBadge(kind, val) {
+  val = val || (kind === 'st' ? 'Open' : kind === 'pr' ? 'Medium' : 'Change');
+  if (kind === 'st')  return '<span class="tk-badge st-' + val.replace(/\s+/g, '-') + '">' + escHtml(tr('tk.st.' + val)) + '</span>';
+  if (kind === 'cat') return '<span class="tk-badge tk-cat">' + escHtml(tr('tk.cat.' + val)) + '</span>';
+  if (kind === 'pr')  return '<span class="tk-badge pr-' + val + '">' + escHtml(tr('tk.pr.' + val)) + '</span>';
+  return '';
+}
+function tkCommentsHtml() {
+  if (!ticketComments.length) return '<div class="tk-nocomments">' + escHtml(tr('tk.noComments')) + '</div>';
+  return ticketComments.map(c => {
+    const mine = c.author_id === USER_ID;
+    const who = mine ? tr('tk.youAdmin') : (c.author_email || '');
+    return '<div class="tk-comment' + (mine ? ' mine' : '') + '"><div class="tk-comment-head"><span class="tk-comment-who">' +
+      escHtml(who) + '</span><span class="tk-comment-date">' + escHtml(tkDateTime(c.created_at)) + '</span></div>' +
+      '<div class="tk-comment-body md-body">' + tkMd(c.body) + '</div></div>';
+  }).join('');
+}
+
+async function loadAllTickets() {
+  if (!sb || USER_ROLE !== 'admin') return;
+  const r = await sb.from('tickets').select('*').order('created_at', { ascending: false });
+  if (r.error) { console.error('[tickets] load failed', r.error); return; }
+  tickets = r.data || [];
+}
+async function loadTicketComments(id) {
+  const r = await sb.from('ticket_comments').select('*').eq('ticket_id', id).order('created_at', { ascending: true });
+  ticketComments = r.error ? [] : (r.data || []);
+}
+async function updateTicket(id, fields) {
+  const r = await sb.from('tickets').update(fields).eq('id', id);
+  if (r.error) { console.error('[tickets] update failed', r.error); setSyncStatus('error'); }
+}
+async function addTicketComment(id, body) {
+  const r = await sb.from('ticket_comments').insert({ ticket_id: id, body: body, author_id: USER_ID, author_email: USER_EMAIL }).select().single();
+  if (r.error) { alert(r.error.message); return null; }
+  return r.data;
+}
+function subscribeTicketsRealtime() {
+  if (!sb || USER_ROLE !== 'admin') return;
+  if (ticketsRtChannel) { sb.removeChannel(ticketsRtChannel); ticketsRtChannel = null; }
+  ticketsRtChannel = sb.channel('admin_tickets')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, async () => { await loadAllTickets(); if (currentView === 'tickets' && !document.querySelector('.modal-backdrop')) renderBoard(); })
+    .subscribe();
+}
+
+function renderTickets(board) {
+  const counts = {}; TK_STATUSES.forEach(st => counts[st] = 0);
+  tickets.forEach(t => { if (counts[t.status] != null) counts[t.status]++; });
+  const open = tickets.filter(t => t.status !== 'Done' && t.status !== 'Rejected').length;
+  const pills = ['all'].concat(TK_STATUSES).map(st =>
+    '<button class="tk-fpill' + (ticketFilter === st ? ' active' : '') + '" data-tkf="' + st + '">' +
+    (st === 'all' ? escHtml(tr('tk.all')) + ' (' + tickets.length + ')' : escHtml(tr('tk.st.' + st)) + ' (' + counts[st] + ')') + '</button>'
+  ).join('');
+  const list = (ticketFilter === 'all') ? tickets : tickets.filter(t => t.status === ticketFilter);
+  const rows = list.length ? list.map(t =>
+    '<button class="tk-row" data-tkrow="' + escHtml(t.id) + '">' +
+      '<span class="tk-row-main"><span class="tk-row-title">' + escHtml(t.title || '—') + '</span>' +
+      '<span class="tk-row-sub">' + escHtml(t.requester_email || '') + (t.report ? ' · ' + escHtml(t.report) : '') + '</span></span>' +
+      '<span class="tk-row-badges">' + tkBadge('cat', t.category) + tkBadge('pr', t.priority) + tkBadge('st', t.status) + '</span>' +
+      '<span class="tk-row-date">' + escHtml(tkDay(t.created_at)) + '</span>' +
+    '</button>'
+  ).join('') : '<div class="tk-empty-admin">' + escHtml(tr('tk.empty')) + '</div>';
+  board.innerHTML = '<div class="tk-admin"><div class="tk-admin-head"><h2>' + escHtml(tr('tk.title')) +
+    '</h2><span class="tk-openpill">' + open + ' ' + escHtml(tr('tk.openCount')) + '</span></div>' +
+    '<div class="tk-filters">' + pills + '</div><div class="tk-rows">' + rows + '</div></div>';
+  board.querySelectorAll('[data-tkf]').forEach(b => b.addEventListener('click', () => { ticketFilter = b.dataset.tkf; renderBoard(); }));
+  board.querySelectorAll('[data-tkrow]').forEach(b => b.addEventListener('click', () => openTicketModal(b.dataset.tkrow)));
+}
+
+async function openTicketModal(id) {
+  const t = tickets.find(x => x.id === id); if (!t) return;
+  await loadTicketComments(id);
+  const stOpts = TK_STATUSES.map(st => '<option value="' + st + '"' + (t.status === st ? ' selected' : '') + '>' + escHtml(tr('tk.st.' + st)) + '</option>').join('');
+  const prOpts = TK_PRIORITIES.map(p => '<option value="' + p + '"' + (t.priority === p ? ' selected' : '') + '>' + escHtml(tr('tk.pr.' + p)) + '</option>').join('');
+  const convo = t.linked_task_id
+    ? '<span class="tk-converted">' + escHtml(tr('tk.converted')) + '</span>'
+    : '<button type="button" class="btn-ghost" id="tk-convert">' + escHtml(tr('tk.convert')) + '</button>';
+  const backdrop = document.createElement('div'); backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = '<div class="modal modal-lg" role="dialog" aria-modal="true">' +
+    '<h2 style="margin-bottom:4px">' + escHtml(t.title || '—') + '</h2>' +
+    '<div class="tk-detail-meta"><span>' + escHtml(t.requester_email || '') + '</span>' + (t.report ? '<span>· ' + escHtml(t.report) + '</span>' : '') + '<span>· ' + escHtml(tkDay(t.created_at)) + '</span>' + tkBadge('cat', t.category) + '</div>' +
+    '<div class="md-body tk-desc">' + (tkMd(t.description) || '<em style="color:var(--text-light)">—</em>') + '</div>' +
+    '<div class="settings-row" style="gap:10px;margin-top:6px">' +
+      '<div class="field" style="flex:1;margin:0"><label>' + escHtml(tr('tk.status')) + '</label><select id="tk-status">' + stOpts + '</select></div>' +
+      '<div class="field" style="flex:1;margin:0"><label>' + escHtml(tr('tk.priority')) + '</label><select id="tk-priority">' + prOpts + '</select></div>' +
+    '</div>' +
+    '<div class="tk-section-label">' + escHtml(tr('tk.comments')) + '</div>' +
+    '<div class="tk-comments" id="tk-comments">' + tkCommentsHtml() + '</div>' +
+    '<div class="tk-comment-form"><textarea id="tk-cinput" rows="2" placeholder="' + escHtml(tr('tk.reply')) + '"></textarea><button class="btn-primary" id="tk-csend">' + escHtml(tr('tk.send')) + '</button></div>' +
+    '<div class="modal-actions">' + convo + '<button type="button" class="btn-secondary" id="tk-close">' + escHtml(tr('tk.close')) + '</button></div>' +
+    '</div>';
+  document.body.appendChild(backdrop);
+  let changed = false;
+  function close() { if (backdrop.parentNode) document.body.removeChild(backdrop); document.removeEventListener('keydown', onKey); if (changed && currentView === 'tickets') renderBoard(); }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.getElementById('tk-close').addEventListener('click', close);
+
+  const stSel = document.getElementById('tk-status'), prSel = document.getElementById('tk-priority');
+  stSel.addEventListener('change', async () => { t.status = stSel.value; changed = true; await updateTicket(t.id, { status: t.status }); });
+  prSel.addEventListener('change', async () => { t.priority = prSel.value; changed = true; await updateTicket(t.id, { priority: t.priority }); });
+
+  const send = document.getElementById('tk-csend'), inp = document.getElementById('tk-cinput');
+  async function sendComment() {
+    const body = inp.value.trim(); if (!body) return;
+    send.disabled = true;
+    const c = await addTicketComment(t.id, body);
+    send.disabled = false;
+    if (c) { inp.value = ''; await loadTicketComments(t.id); const box = document.getElementById('tk-comments'); if (box) box.innerHTML = tkCommentsHtml(); }
+  }
+  send.addEventListener('click', sendComment);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendComment(); } });
+
+  const convBtn = document.getElementById('tk-convert');
+  if (convBtn) convBtn.addEventListener('click', async () => {
+    const col = columns.find(c => c.id === 'todo') || columns[0];
+    if (!col) return;
+    const newId = uid();
+    tasks.push({ id: newId, title: t.title, desc: t.description || '', priority: TK_PRIORITIES.indexOf(t.priority) >= 0 ? t.priority : 'Medium', deadline: null, col: col.id, group: '', created: Date.now(), subtasks: [] });
+    saveTasks();
+    t.linked_task_id = newId; if (t.status === 'Open') t.status = 'In progress';
+    changed = true;
+    await updateTicket(t.id, { linked_task_id: newId, status: t.status });
+    close();
+    alert(tr('tk.convertedMsg'));
+  });
+}
+
+// ============================================================
 //  Account menu (topbar)
 // ============================================================
 function setupAccountMenu() {
@@ -2181,6 +2352,9 @@ async function onLogin(session) {
   USER_ID = session.user.id;
   USER_EMAIL = session.user.email || '';
   try { if (sb.realtime && session.access_token) sb.realtime.setAuth(session.access_token); } catch (e) {}
+  USER_ROLE = 'requester';
+  try { const pr = await sb.from('profiles').select('role').eq('id', USER_ID).single(); if (!pr.error && pr.data && pr.data.role) USER_ROLE = pr.data.role; } catch (e) {}
+  const _tkBtn = document.querySelector('#view-switch [data-view="tickets"]'); if (_tkBtn) _tkBtn.hidden = (USER_ROLE !== 'admin');
   hideAuthScreen();
   refreshAccountMenu();
   // 1) instant paint from local cache
@@ -2203,12 +2377,19 @@ async function onLogin(session) {
   }
   // 3) live updates
   subscribeRealtime();
+  if (USER_ROLE === 'admin') {
+    try { await loadAllTickets(); } catch (e) {}
+    subscribeTicketsRealtime();
+    if (currentView === 'tickets') renderBoard();
+  }
 }
 function onLogout() {
   if (rtChannel && sb) { sb.removeChannel(rtChannel); rtChannel = null; }
   cacheClearUser();
-  USER_ID = null; USER_EMAIL = '';
-  tasks = []; columns = []; groups = [];
+  if (ticketsRtChannel && sb) { sb.removeChannel(ticketsRtChannel); ticketsRtChannel = null; }
+  USER_ID = null; USER_EMAIL = ''; USER_ROLE = 'requester';
+  tasks = []; columns = []; groups = []; tickets = []; ticketComments = [];
+  const _tkBtn2 = document.querySelector('#view-switch [data-view="tickets"]'); if (_tkBtn2) _tkBtn2.hidden = true;
   seenCols = new Set(); seenGroups = new Set();
   setAuthMode('signin');
   const em = document.getElementById('auth-email'); if (em) em.value = '';

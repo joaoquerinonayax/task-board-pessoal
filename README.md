@@ -6,6 +6,7 @@ hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grá
 - 🗂️ Cinco visões: **Kanban**, **Tabela**, **Cards**, **Calendário** e **Notas** (Markdown)
 - 🌐 **Inglês por padrão**, com troca para **PT-BR** em um clique (login e menu de conta)
 - 📝 **Notas em Markdown** com preview ao vivo e **geração de tarefas** a partir da nota
+- 🎫 **Sistema de chamados**: portal para o time pedir mudanças no Power BI; você gerencia no app
 - 🔐 Login por **e-mail + senha** — os dados ficam protegidos por usuário (RLS)
 - ☁️ **Sync na nuvem** com cache local (abre rápido e aguenta ficar offline por um tempo)
 - ⚡ **Tempo real**: mudou num dispositivo, aparece nos outros abertos
@@ -159,6 +160,25 @@ No dashboard do Supabase: **Authentication → Users** → você pode enviar res
 
 ---
 
+## Sistema de chamados (Tickets)
+
+O time de FP&A abre pedidos de mudança no Power BI por um **portal separado**; você
+gerencia tudo no app principal (aba **🎫 Tickets**, visível só para o admin).
+
+**Setup (uma vez):**
+1. Rode [`supabase/tickets.sql`](supabase/tickets.sql) no SQL Editor. **Antes**, ajuste o
+   e-mail do admin na última linha (`update ... where email = 'voce@...'`).
+2. Convide o time: **Authentication → Users → Invite user**. Eles entram como
+   `requester` (só veem os próprios chamados; não veem seu board/notas).
+3. Compartilhe o portal: **`https://joaoquerinonayax.github.io/task-board/tickets.html`**
+
+**Como funciona:**
+- No portal, o solicitante abre um chamado (título, categoria, relatório, prioridade,
+  descrição em Markdown) e acompanha o status + conversa por comentários.
+- Em **🎫 Tickets** (admin) você vê todos, filtra por status, muda status/prioridade,
+  responde por comentário (tempo real) e **converte um chamado em tarefa** do board.
+- Segurança por **RLS**: cada solicitante só acessa os próprios chamados; o admin vê todos.
+
 ## Estrutura do projeto
 
 ```
@@ -170,6 +190,9 @@ config.example.js   Modelo do config.js
 favicon.svg         Ícone da aba do navegador
 supabase/schema.sql SQL: tabelas (columns/groups/tasks) + RLS + realtime
 supabase/notes.sql  SQL: tabela de notas (rode depois do schema.sql)
+supabase/tickets.sql SQL: chamados + papéis (admin/requester) + RLS
+tickets.html        Portal do time (abrir/acompanhar chamados)
+tickets.js          Lógica do portal de chamados
 ```
 
 ## Idioma
