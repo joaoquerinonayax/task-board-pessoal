@@ -3,7 +3,8 @@
 Quadro de tarefas (Kanban / Tabela / Cards / Calendário) que roda 100% no navegador,
 hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grátis).
 
-- 🗂️ Cinco visões: **Kanban**, **Tabela**, **Cards**, **Calendário** e **Notas** (Markdown)
+- 🗂️ Seis visões: **Kanban**, **Tabela**, **Cards**, **Calendário**, **Notas** e **Apresentações**
+- 🖼️ **Apresentações**: importe slide decks em **HTML** e visualize/apresente tudo centralizado
 - 🌐 **Inglês por padrão**, com troca para **PT-BR** em um clique (login e menu de conta)
 - 📝 **Notas em Markdown** com preview ao vivo e **geração de tarefas** a partir da nota
 - 🎫 **Sistema de chamados**: portal para o time pedir mudanças no Power BI; você gerencia no app
@@ -11,6 +12,7 @@ hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grá
 - 🔐 Login por **e-mail + senha** — os dados ficam protegidos por usuário (RLS)
 - ☁️ **Sync na nuvem** com cache local (abre rápido e aguenta ficar offline por um tempo)
 - ⚡ **Tempo real**: mudou num dispositivo, aparece nos outros abertos
+- 🎨 Ícones **Lucide**, **avatar** com foto, **modo foco**, **ocultar/mostrar colunas** e barra lateral
 - 🎨 Tema claro/escuro, prioridades, prazos, subtarefas, grupos, colunas personalizáveis
 - ⤓ Export/Import JSON e CSV
 
@@ -50,6 +52,8 @@ moram no **seu** banco Supabase, atrás de login.
 4. **Para o Analytics:** rode [`supabase/analytics.sql`](supabase/analytics.sql) (adiciona `completed_at`
    para registrar quando cada tarefa é concluída). Sem isso, o app salva normalmente, mas o gráfico de
    "concluídas por semana" fica vazio.
+5. **Para Apresentações:** rode [`supabase/presentations.sql`](supabase/presentations.sql) (cria a tabela
+   `presentations`). Sem isso, as apresentações ficam **só localmente** (com aviso).
 
 ### 3. Desligue a confirmação de e-mail (recomendado p/ uso pessoal)
 Assim você cria a conta e já entra, sem precisar clicar num link de e-mail.
@@ -195,6 +199,7 @@ favicon.svg         Ícone da aba do navegador
 supabase/schema.sql SQL: tabelas (columns/groups/tasks) + RLS + realtime
 supabase/notes.sql  SQL: tabela de notas (rode depois do schema.sql)
 supabase/analytics.sql SQL: coluna completed_at (dashboard de Analytics)
+supabase/presentations.sql SQL: tabela de apresentações (slides HTML)
 supabase/tickets.sql SQL: chamados + papéis (admin/requester) + RLS
 tickets.html        Portal do time (abrir/acompanhar chamados)
 tickets.js          Lógica do portal de chamados
