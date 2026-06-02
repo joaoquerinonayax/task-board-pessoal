@@ -35,6 +35,7 @@ create table if not exists public.tasks (
   description text not null default '',
   priority    text not null default 'Medium',
   deadline    date,
+  completed_at timestamptz,
   col_id      text,
   group_id    text,
   position    integer not null default 0,

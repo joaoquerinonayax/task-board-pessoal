@@ -57,6 +57,7 @@ let ticketFilter = 'all';
 // Notes editor prefs
 let noteMode = (function(){ const m = localStorage.getItem('tb_note_mode'); return (m === 'md' || m === 'rich') ? m : 'split'; })();
 let noteFocus = localStorage.getItem('tb_note_focus') === '1';
+let tasksOmitCompleted = false;
 let _td = null;
 function getTurndown() {
   if (_td) return _td;
@@ -187,6 +188,8 @@ Object.assign(I18N['pt-BR'], {
 });
 Object.assign(I18N.en, { 'notes.split':'Split','notes.md':'Markdown','notes.rich':'Rich','notes.focus':'Focus mode','notes.exitFocus':'Exit focus' });
 Object.assign(I18N['pt-BR'], { 'notes.split':'Dividido','notes.md':'Markdown','notes.rich':'Visual','notes.focus':'Modo foco','notes.exitFocus':'Sair do foco' });
+Object.assign(I18N.en, { 'an.tab':'📊 Analytics','an.title':'Analytics','an.kTotal':'Total tasks','an.kDone':'Completed','an.kOpen':'Open','an.kOverdue':'Overdue','an.kRate':'Completion','an.doneWeek':'done this week','an.doneMonth':'done (30 days)','an.dueSoon':'due in 7 days','an.byStatus':'Tasks by status','an.byPriority':'Tasks by priority','an.byGroup':'Tasks by group','an.completions':'Completed per week (last 8)','an.subtasks':'Subtasks','an.subtaskProgress':'{d} of {t} subtasks done','an.notes':'Notes','an.noteCount':'Notes','an.noteWords':'Words written','an.lastEdited':'Last edited','an.never':'—','an.tickets':'Tickets','an.tkOpen':'Open','an.tkDone':'Resolved','an.byCategory':'By category','an.noData':'No data yet.','an.completionsHint':'Tracked from now on.' });
+Object.assign(I18N['pt-BR'], { 'an.tab':'📊 Análise','an.title':'Análise','an.kTotal':'Total de tarefas','an.kDone':'Concluídas','an.kOpen':'Em aberto','an.kOverdue':'Atrasadas','an.kRate':'Conclusão','an.doneWeek':'concluídas na semana','an.doneMonth':'concluídas (30 dias)','an.dueSoon':'vencem em 7 dias','an.byStatus':'Tarefas por status','an.byPriority':'Tarefas por prioridade','an.byGroup':'Tarefas por grupo','an.completions':'Concluídas por semana (últimas 8)','an.subtasks':'Subtarefas','an.subtaskProgress':'{d} de {t} subtarefas concluídas','an.notes':'Notas','an.noteCount':'Notas','an.noteWords':'Palavras escritas','an.lastEdited':'Última edição','an.never':'—','an.tickets':'Chamados','an.tkOpen':'Abertos','an.tkDone':'Resolvidos','an.byCategory':'Por categoria','an.noData':'Sem dados ainda.','an.completionsHint':'Registrado a partir de agora.' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -263,7 +266,7 @@ function saveCollapsed() { localStorage.setItem(STORE_COLLAPSED, JSON.stringify(
 
 function loadView() {
   const v = localStorage.getItem(STORE_VIEW);
-  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes' || v === 'tickets') currentView = v;
+  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes' || v === 'tickets' || v === 'analytics') currentView = v;
 }
 function saveView() { localStorage.setItem(STORE_VIEW, currentView); }
 
@@ -291,6 +294,8 @@ function escHtml(s) {
 }
 function uid() { return 't_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
 function getCol(id) { return columns.find(c => c.id === id); }
+// Stamp/clear the completion time when a task enters/leaves the 'done' column
+function markCompletion(t) { if (t.col === 'done') { if (!t.completed) t.completed = Date.now(); } else { t.completed = null; } }
 
 // ---- Rich text helpers ----
 function isHtmlContent(s) { return /<[a-z][\s\S]*>/i.test(s || ''); }
@@ -529,11 +534,13 @@ function renderBoard() {
   board.className = 'board view-' + currentView + ((groupBy && currentView === 'cards') ? ' grouped' : '');
   document.body.classList.toggle('notes-active', currentView === 'notes');
   document.body.classList.toggle('tickets-active', currentView === 'tickets');
+  document.body.classList.toggle('analytics-active', currentView === 'analytics');
   if      (currentView === 'kanban')   renderKanban(board);
   else if (currentView === 'table')    renderTable(board);
   else if (currentView === 'calendar') renderCalendar(board);
   else if (currentView === 'notes')    renderNotes(board);
   else if (currentView === 'tickets')  renderTickets(board);
+  else if (currentView === 'analytics') renderAnalytics(board);
   else                                 renderCards(board);
   renderOverview();
   renderGroupsList();
@@ -874,6 +881,7 @@ function moveTask(taskId, targetColId, beforeCardId) {
   if (taskIdx < 0) return;
   const [task] = tasks.splice(taskIdx, 1);
   task.col = targetColId;
+  markCompletion(task);
   if (beforeCardId) {
     const refIdx = tasks.findIndex(t => t.id === beforeCardId);
     if (refIdx >= 0) { tasks.splice(refIdx, 0, task); }
@@ -944,6 +952,7 @@ function attachCardHandlers(isKanban) {
       const newIdx = idx + (el.dataset.move === 'next' ? 1 : -1);
       if (newIdx < 0 || newIdx >= columns.length) return;
       t.col = columns[newIdx].id;
+      markCompletion(t);
       saveTasks(); renderBoard();
     });
   });
@@ -1304,9 +1313,9 @@ function openTaskModal(id) {
     if (!data.title) return;
     if (editingTaskId) {
       const t = tasks.find(x => x.id === editingTaskId);
-      if (t) Object.assign(t, data);
+      if (t) { Object.assign(t, data); markCompletion(t); }
     } else {
-      tasks.push({ id: uid(), created: Date.now(), ...data });
+      const nt = { id: uid(), created: Date.now(), ...data }; markCompletion(nt); tasks.push(nt);
     }
     saveTasks(); renderBoard();
     close();
@@ -1774,7 +1783,7 @@ function initSupabase() {
 function colToRow(c, i)   { return { id: c.id, user_id: USER_ID, name: c.name || '', color: c.color || '#6161ff', position: i }; }
 function groupToRow(g, i) { return { id: g.id, user_id: USER_ID, name: g.name || '', color: g.color || '#6161ff', position: i }; }
 function taskToRow(t, i) {
-  return {
+  const row = {
     id: t.id, user_id: USER_ID,
     title: t.title || '', description: t.desc || '',
     priority: t.priority || 'Medium',
@@ -1785,6 +1794,8 @@ function taskToRow(t, i) {
     subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
     created_at: new Date(t.created || Date.now()).toISOString(),
   };
+  if (!tasksOmitCompleted) row.completed_at = t.completed ? new Date(t.completed).toISOString() : null;
+  return row;
 }
 function rowToCol(r)   { return { id: r.id, name: r.name || '', color: r.color || '#6161ff' }; }
 function rowToGroup(r) { return { id: r.id, name: r.name || '', color: r.color || '#6161ff' }; }
@@ -1796,6 +1807,7 @@ function rowToTask(r) {
     col: r.col_id || '',
     group: r.group_id || '',
     created: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+    completed: r.completed_at ? new Date(r.completed_at).getTime() : null,
     subtasks: Array.isArray(r.subtasks) ? r.subtasks : [],
   };
 }
@@ -1852,7 +1864,11 @@ async function flushCloudSave() {
   try {
     if (dirty.columns) { await pushTable('columns', columns.map(colToRow),   columns.map(c => c.id)); dirty.columns = false; }
     if (dirty.groups)  { await pushTable('groups',  groups.map(groupToRow),  groups.map(g => g.id));  dirty.groups = false; }
-    if (dirty.tasks)   { await pushTable('tasks',   tasks.map(taskToRow),    tasks.map(t => t.id));   dirty.tasks = false; }
+    if (dirty.tasks) {
+      try { await pushTable('tasks', tasks.map(taskToRow), tasks.map(t => t.id)); }
+      catch (e) { if (/completed_at/i.test((e && e.message) || '') && !tasksOmitCompleted) { tasksOmitCompleted = true; await pushTable('tasks', tasks.map(taskToRow), tasks.map(t => t.id)); } else { throw e; } }
+      dirty.tasks = false;
+    }
     if (dirty.notes)   { try { await pushTable('notes', notes.map(noteToRow), notes.map(n => n.id)); notesTableMissing = false; } catch (e) { notesTableMissing = true; console.warn('[notes] push failed:', e && e.message); } dirty.notes = false; }
     lastPushAt = (window.performance ? performance.now() : Date.now());
     setSyncStatus('synced');
@@ -2105,7 +2121,7 @@ function openGenerateTasksModal(noteId) {
       const cand = cands[parseInt(cb.dataset.gi)];
       if (!cand || !cand.text) return;
       const targetCol = (cand.done && doneCol) ? doneCol.id : colSel;
-      tasks.push({ id: uid(), title: cand.text, desc: '', priority: 'Medium', deadline: null, col: targetCol, group: '', created: Date.now() + n, subtasks: [] });
+      const gt = { id: uid(), title: cand.text, desc: '', priority: 'Medium', deadline: null, col: targetCol, group: '', created: Date.now() + n, subtasks: [] }; markCompletion(gt); tasks.push(gt);
       n++;
     });
     close();
@@ -2260,6 +2276,94 @@ async function openTicketModal(id) {
     close();
     alert(tr('tk.convertedMsg'));
   });
+}
+
+// ============================================================
+//  Analytics dashboard
+// ============================================================
+function anCard(value, label, cls) {
+  return '<div class="an-card' + (cls ? ' ' + cls : '') + '"><div class="an-card-val">' + value + '</div><div class="an-card-label">' + escHtml(label) + '</div></div>';
+}
+function anBarRow(label, n, max, color) {
+  const pct = max > 0 ? Math.round(n / max * 100) : 0;
+  return '<div class="an-bar"><span class="an-bar-label" title="' + escHtml(label) + '">' + escHtml(label) + '</span>' +
+    '<span class="an-bar-track"><span class="an-bar-fill" style="width:' + pct + '%;background:' + escHtml(color || 'var(--purple)') + '"></span></span>' +
+    '<span class="an-bar-val">' + n + '</span></div>';
+}
+function renderAnalytics(board) {
+  const isDone = t => t.col === 'done';
+  const total = tasks.length;
+  const done = tasks.filter(isDone).length;
+  const open = total - done;
+  const overdue = tasks.filter(t => !isDone(t) && t.deadline && daysUntil(t.deadline) < 0).length;
+  const dueSoon = tasks.filter(t => !isDone(t) && t.deadline && daysUntil(t.deadline) >= 0 && daysUntil(t.deadline) <= 7).length;
+  const rate = total ? Math.round(done / total * 100) : 0;
+  let stDone = 0, stTotal = 0;
+  tasks.forEach(t => { const c = subtaskCounts(t); stDone += c.done; stTotal += c.total; });
+  const completedTs = tasks.filter(t => t.completed).map(t => t.completed);
+  const doneWeek = completedTs.filter(ts => ts >= Date.now() - 7 * 864e5).length;
+  const doneMonth = completedTs.filter(ts => ts >= Date.now() - 30 * 864e5).length;
+
+  const cards = anCard(total, tr('an.kTotal')) + anCard(done, tr('an.kDone'), 'ok') + anCard(open, tr('an.kOpen')) +
+    anCard(overdue, tr('an.kOverdue'), overdue ? 'bad' : '') + anCard(rate + '%', tr('an.kRate'), 'accent');
+
+  const colMax = Math.max(1, ...columns.map(c => tasks.filter(t => t.col === c.id).length));
+  const byStatus = columns.length ? columns.map(c => anBarRow(c.name, tasks.filter(t => t.col === c.id).length, colMax, c.color)).join('') : '<div class="an-empty">' + escHtml(tr('an.noData')) + '</div>';
+
+  const prioColors = { Critical: 'var(--red)', High: 'var(--orange)', Medium: 'var(--blue)', Low: 'var(--green)' };
+  const prMax = Math.max(1, ...PRIORITIES.map(p => tasks.filter(t => t.priority === p).length));
+  const byPrio = PRIORITIES.map(p => anBarRow(prioLabel(p), tasks.filter(t => t.priority === p).length, prMax, prioColors[p])).join('');
+
+  const grpList = groupOrder().map(g => ({ name: g.name, color: g.color, n: tasks.filter(t => (t.group || '') === g.id).length })).filter(x => x.n > 0);
+  const grpMax = Math.max(1, ...grpList.map(x => x.n));
+  const byGroup = grpList.length ? grpList.map(x => anBarRow(x.name, x.n, grpMax, x.color)).join('') : '<div class="an-empty">' + escHtml(tr('an.noData')) + '</div>';
+
+  const weeks = 8, counts = new Array(weeks).fill(0);
+  const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+  completedTs.forEach(ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); const w = Math.floor(((todayMid - d) / 864e5) / 7); if (w >= 0 && w < weeks) counts[weeks - 1 - w]++; });
+  const cMax = Math.max(1, ...counts);
+  const colChart = '<div class="an-cols">' + counts.map((n, i) => {
+    const h = n ? Math.max(6, Math.round(n / cMax * 100)) : 2;
+    const lbl = i === 0 ? '-8w' : (i === weeks - 1 ? 'now' : '');
+    return '<div class="an-colwrap"><span class="an-colval">' + (n || '') + '</span><span class="an-colbar" style="height:' + h + '%"></span><span class="an-collbl">' + lbl + '</span></div>';
+  }).join('') + '</div>';
+
+  const stPct = stTotal ? Math.round(stDone / stTotal * 100) : 0;
+  const subProgress = '<div class="an-progress-top"><span>' + escHtml(tr('an.subtaskProgress').replace('{d}', stDone).replace('{t}', stTotal)) + '</span><span>' + stPct + '%</span></div>' +
+    '<span class="an-bar-track big"><span class="an-bar-fill" style="width:' + stPct + '%;background:var(--green)"></span></span>';
+
+  const noteCount = notes.length;
+  const noteWords = notes.reduce((sum, n) => sum + stripInlineMd(n.content || '').split(/\s+/).filter(Boolean).length, 0);
+  const lastTs = notes.reduce((m, n) => Math.max(m, n.created || 0), 0);
+  const lastNote = lastTs ? new Date(lastTs).toLocaleDateString(localeFor(), { day: 'numeric', month: 'short', year: 'numeric' }) : tr('an.never');
+
+  let ticketsSection = '';
+  if (USER_ROLE === 'admin' && tickets.length) {
+    const tkOpen = tickets.filter(t => t.status !== 'Done' && t.status !== 'Rejected').length;
+    const tkDone = tickets.filter(t => t.status === 'Done').length;
+    const cats = ['Change', 'Addition', 'Improvement', 'Bug', 'Question'];
+    const catMax = Math.max(1, ...cats.map(c => tickets.filter(t => t.category === c).length));
+    const byCat = cats.map(c => { const n = tickets.filter(t => t.category === c).length; return n ? anBarRow(tr('tk.cat.' + c), n, catMax, 'var(--purple)') : ''; }).join('');
+    ticketsSection = '<div class="an-section"><h3>' + escHtml(tr('an.tickets')) + '</h3><div class="an-cards">' +
+      anCard(tickets.length, tr('an.kTotal')) + anCard(tkOpen, tr('an.tkOpen')) + anCard(tkDone, tr('an.tkDone'), 'ok') +
+      '</div><div class="an-sub">' + escHtml(tr('an.byCategory')) + '</div>' + byCat + '</div>';
+  }
+
+  board.innerHTML = '<div class="an-wrap">' +
+    '<h2 class="an-h2">' + escHtml(tr('an.title')) + '</h2>' +
+    '<div class="an-cards">' + cards + '</div>' +
+    '<div class="an-mini"><span>✅ <b>' + doneWeek + '</b> ' + escHtml(tr('an.doneWeek')) + '</span><span>🗓️ <b>' + doneMonth + '</b> ' + escHtml(tr('an.doneMonth')) + '</span><span>⏰ <b>' + dueSoon + '</b> ' + escHtml(tr('an.dueSoon')) + '</span></div>' +
+    '<div class="an-grid">' +
+      '<div class="an-section"><h3>' + escHtml(tr('an.byStatus')) + '</h3>' + byStatus + '</div>' +
+      '<div class="an-section"><h3>' + escHtml(tr('an.byPriority')) + '</h3>' + byPrio + '</div>' +
+      '<div class="an-section"><h3>' + escHtml(tr('an.byGroup')) + '</h3>' + byGroup + '</div>' +
+      '<div class="an-section"><h3>' + escHtml(tr('an.completions')) + '</h3>' + (completedTs.length ? colChart : '<div class="an-empty">' + escHtml(tr('an.noData')) + ' ' + escHtml(tr('an.completionsHint')) + '</div>') + '</div>' +
+    '</div>' +
+    '<div class="an-section"><h3>' + escHtml(tr('an.subtasks')) + '</h3>' + subProgress + '</div>' +
+    '<div class="an-section"><h3>' + escHtml(tr('an.notes')) + '</h3><div class="an-cards">' + anCard(noteCount, tr('an.noteCount')) + anCard(noteWords, tr('an.noteWords')) + '</div>' +
+      '<div class="an-mini"><span>📝 ' + escHtml(tr('an.lastEdited')) + ': <b>' + escHtml(lastNote) + '</b></span></div></div>' +
+    ticketsSection +
+  '</div>';
 }
 
 // ============================================================

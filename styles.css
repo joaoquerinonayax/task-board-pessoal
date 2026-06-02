@@ -1132,3 +1132,43 @@ body.tickets-active #groupby-btn { display: none; }
   .note-body { flex-direction: column; }
   .note-mode-split .note-content { border-right: 0; border-bottom: 1px solid var(--border); min-height: 200px; }
 }
+
+/* ===============================================
+   ANALYTICS DASHBOARD
+   =============================================== */
+body.analytics-active .subbar .search-input,
+body.analytics-active .subbar .sort-label,
+body.analytics-active .subbar .sort-select,
+body.analytics-active .subbar .filter-btn-wrap,
+body.analytics-active #groupby-btn { display: none; }
+.board.view-analytics { display: block; }
+.an-wrap { max-width: 1100px; }
+.an-h2 { margin: 0 0 14px; font-size: 18px; }
+.an-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.an-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+.an-card-val { font-size: 26px; font-weight: 700; line-height: 1; }
+.an-card-label { font-size: 12px; color: var(--text-light); margin-top: 6px; }
+.an-card.ok .an-card-val { color: #00a65a; }
+[data-theme="dark"] .an-card.ok .an-card-val { color: #4fd99b; }
+.an-card.bad .an-card-val { color: var(--red); }
+.an-card.accent .an-card-val { color: var(--purple); }
+.an-mini { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-light); margin-bottom: 16px; }
+.an-mini b { color: var(--text); }
+.an-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.an-section { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.an-grid .an-section { margin-bottom: 0; }
+.an-section h3 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-light); }
+.an-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-light); margin: 12px 0 8px; font-weight: 600; }
+.an-empty { color: var(--text-light); font-style: italic; font-size: 13px; }
+.an-bar { display: flex; align-items: center; gap: 10px; margin: 7px 0; }
+.an-bar-label { width: 120px; flex-shrink: 0; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-bar-track { flex: 1; height: 10px; background: var(--bg); border-radius: 6px; overflow: hidden; }
+.an-bar-track.big { height: 14px; display: block; }
+.an-bar-fill { display: block; height: 100%; border-radius: 6px; min-width: 2px; transition: width 0.3s ease; }
+.an-bar-val { width: 34px; text-align: right; font-size: 12.5px; font-weight: 600; color: var(--text-light); flex-shrink: 0; }
+.an-progress-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 6px; }
+.an-cols { display: flex; align-items: flex-end; gap: 8px; height: 150px; }
+.an-colwrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.an-colval { font-size: 11px; font-weight: 700; color: var(--text-light); min-height: 14px; }
+.an-colbar { width: 100%; max-width: 36px; background: var(--purple); border-radius: 5px 5px 0 0; transition: height 0.3s ease; }
+.an-collbl { font-size: 10px; color: var(--text-light); }

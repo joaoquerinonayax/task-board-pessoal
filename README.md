@@ -7,6 +7,7 @@ hospedado no **GitHub Pages** e com os dados guardados no seu **Supabase** (grá
 - 🌐 **Inglês por padrão**, com troca para **PT-BR** em um clique (login e menu de conta)
 - 📝 **Notas em Markdown** com preview ao vivo e **geração de tarefas** a partir da nota
 - 🎫 **Sistema de chamados**: portal para o time pedir mudanças no Power BI; você gerencia no app
+- 📊 **Analytics**: dashboard de tarefas concluídas (por semana), prazos, prioridades, grupos e notas
 - 🔐 Login por **e-mail + senha** — os dados ficam protegidos por usuário (RLS)
 - ☁️ **Sync na nuvem** com cache local (abre rápido e aguenta ficar offline por um tempo)
 - ⚡ **Tempo real**: mudou num dispositivo, aparece nos outros abertos
@@ -46,6 +47,9 @@ moram no **seu** banco Supabase, atrás de login.
    - Cria as tabelas `columns`, `groups`, `tasks`, ativa **RLS** e o **Realtime**.
 3. **Para a aba de Notas:** abra outra query, cole [`supabase/notes.sql`](supabase/notes.sql) e **Run**.
    - Cria a tabela `notes`. Sem isso, as notas funcionam **só localmente** (o app mostra um aviso).
+4. **Para o Analytics:** rode [`supabase/analytics.sql`](supabase/analytics.sql) (adiciona `completed_at`
+   para registrar quando cada tarefa é concluída). Sem isso, o app salva normalmente, mas o gráfico de
+   "concluídas por semana" fica vazio.
 
 ### 3. Desligue a confirmação de e-mail (recomendado p/ uso pessoal)
 Assim você cria a conta e já entra, sem precisar clicar num link de e-mail.
@@ -190,6 +194,7 @@ config.example.js   Modelo do config.js
 favicon.svg         Ícone da aba do navegador
 supabase/schema.sql SQL: tabelas (columns/groups/tasks) + RLS + realtime
 supabase/notes.sql  SQL: tabela de notas (rode depois do schema.sql)
+supabase/analytics.sql SQL: coluna completed_at (dashboard de Analytics)
 supabase/tickets.sql SQL: chamados + papéis (admin/requester) + RLS
 tickets.html        Portal do time (abrir/acompanhar chamados)
 tickets.js          Lógica do portal de chamados
