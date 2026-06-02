@@ -100,26 +100,26 @@ const I18N = {
     'auth.noAccount':"Don't have an account?",'auth.loading':'Loading…',
     'auth.restricted':'🔒 Restricted access — ask the administrator for access.',
     'auth.configError':'⚠️ Supabase not configured. Edit config.js with your project URL and key (see README.md).',
-    'auth.featKanban':'⊞ Kanban','auth.featCalendar':'📅 Calendar','auth.featRealtime':'⚡ Real-time',
+    'auth.featKanban':'Kanban','auth.featCalendar':'Calendar','auth.featRealtime':'Real-time',
     'auth.created':'Account created! Confirm via e-mail OR disable "Confirm email" in Supabase, then sign in.',
     'auth.errInvalid':'Wrong e-mail or password.','auth.errExists':'This e-mail already has an account. Sign in.',
     'auth.errWeak':'Password must be at least 6 characters.','auth.errUnconfirmed':'E-mail not confirmed. Use the link or disable confirmation in Supabase.',
     'auth.errSignupOff':'Sign-ups are disabled. Ask the administrator for access.','auth.errRate':'Too many attempts. Wait a moment and try again.','auth.errGeneric':'Something went wrong. Try again.',
-    'tb.export':'⤓ Export ▾','tb.exportJson':'⤓ Export as JSON','tb.exportCsv':'⤓ Export as CSV','tb.import':'⤒ Import JSON',
-    'tb.addTask':'+ Add Task','tb.theme':'Toggle light/dark theme','tb.sync':'Sync status','tb.account':'Account','tb.menu':'Menu',
-    'acct.sync':'⟳ Sync now','acct.signout':'⎋ Sign out','acct.language':'Language',
-    'view.kanban':'⊞ Kanban','view.table':'☰ Table','view.cards':'▦ Cards','view.calendar':'📅 Calendar','view.notes':'📝 Notes',
-    'sb.search':'Search tasks...','sb.sortBy':'Sort by','sb.filter':'⏷ Filter','sb.group':'⊟ Group','sb.groupTitle':'Group tasks',
+    'tb.export':'Export','tb.exportJson':'Export as JSON','tb.exportCsv':'Export as CSV','tb.import':'Import JSON',
+    'tb.addTask':'Add Task','tb.theme':'Toggle light/dark theme','tb.sync':'Sync status','tb.account':'Account','tb.menu':'Menu',
+    'acct.sync':'Sync now','acct.signout':'Sign out','acct.language':'Language',
+    'view.kanban':'Kanban','view.table':'Table','view.cards':'Cards','view.calendar':'Calendar','view.notes':'Notes',
+    'sb.search':'Search tasks...','sb.sortBy':'Sort by','sb.filter':'Filter','sb.group':'Group','sb.groupTitle':'Group tasks',
     'sort.manual':'Manual','sort.created':'Newest','sort.deadline':'Deadline','sort.priority':'Priority','sort.title':'Title (A–Z)',
-    'side.addTask':'Add Task','side.taskName':'Task name','side.desc':'Description','side.priority':'Priority','side.deadline':'Deadline','side.column':'Column','side.addToBoard':'+ Add to Board','side.overview':'Overview','side.addColumn':'+ Add column','side.groups':'Groups','side.addGroup':'+ Add group',
+    'side.addTask':'Add Task','side.taskName':'Task name','side.desc':'Description','side.priority':'Priority','side.deadline':'Deadline','side.column':'Column','side.addToBoard':'Add to Board','side.overview':'Overview','side.addColumn':'Add column','side.groups':'Groups','side.addGroup':'Add group',
     'prio.Critical':'Critical','prio.High':'High','prio.Medium':'Medium','prio.Low':'Low',
-    'col.empty':'☁ No tasks here','col.addTask':'+ Add task','col.edit':'Edit column',
+    'col.empty':'No tasks here','col.addTask':'Add task','col.edit':'Edit column',
     'card.moveLeft':'Move left','card.moveRight':'Move right','card.edit':'Edit','card.delete':'Delete',
     'empty.noMatch':'No tasks match your filters.','groups.empty':'No groups yet.','group.edit':'Edit group','group.none':'No group',
     'dl.today':'Today','dl.tomorrow':'Tomorrow',
     'th.task':'Task','th.priority':'Priority','th.deadline':'Deadline','th.status':'Status','th.added':'Added',
     'cal.prev':'Previous month','cal.next':'Next month','cal.today':'Today','cal.noDeadline':'without deadline',
-    'm.newTask':'New task','m.editTask':'Edit task','m.taskName':'Task name','m.desc':'Description','m.priority':'Priority','m.deadline':'Deadline','m.column':'Column','m.group':'Group','m.noGroup':'— No group —','m.subtasks':'Subtasks','m.addSubtask':'+ Add subtask','m.noSubtasks':'No subtasks yet.','m.subPlaceholder':'Subtask...','m.cancel':'Cancel','m.save':'Save','m.remove':'Remove','m.of':'of','m.done':'done',
+    'm.newTask':'New task','m.editTask':'Edit task','m.taskName':'Task name','m.desc':'Description','m.priority':'Priority','m.deadline':'Deadline','m.column':'Column','m.group':'Group','m.noGroup':'— No group —','m.subtasks':'Subtasks','m.addSubtask':'Add subtask','m.noSubtasks':'No subtasks yet.','m.subPlaceholder':'Subtask...','m.cancel':'Cancel','m.save':'Save','m.remove':'Remove','m.of':'of','m.done':'done',
     'c.newCol':'New column','c.editCol':'Edit column','c.name':'Name','c.color':'Color','c.delete':'Delete column','c.cantDeleteLast':"You can't delete the last remaining column.",
     'c.confirmDel':'Delete "{name}"?','c.confirmDelMove':'Delete "{name}"?\n\n{n} task(s) will be moved to "{other}".',
     'g.newGroup':'New group','g.editGroup':'Edit group','g.delete':'Delete group','g.confirmDel':'Delete group "{name}"?','g.confirmDelTasks':'\n\n{n} task(s) will become ungrouped.',
@@ -128,7 +128,7 @@ const I18N = {
     'sync.idle':'Offline — changes saved on this device only','sync.saving':'Saving…','sync.synced':'All synced','sync.error':'Sync error — we will retry',
     'confirm.delTask':'Delete "{name}"?','confirm.signout':'Sign out? Your data stays saved in Supabase.',
     'import.invalid':'Invalid JSON file — "tasks" field not found.','import.confirm':'Import {n} tasks? This replaces your current data.','import.error':'Error reading file: ',
-    'notes.new':'+ New note','notes.empty':'No notes yet.','notes.untitled':'Untitled note','notes.titlePh':'Note title','notes.contentPh':'Write in Markdown…','notes.delete':'Delete note','notes.gen':'⚡ Generate tasks','notes.select':'Select a note or create a new one.','notes.deleteConfirm':'Delete this note?','notes.tableMissing':'⚠ One-time setup needed: run supabase/notes.sql in your Supabase SQL Editor to sync notes to the cloud. (Notes are cached locally meanwhile.)',
+    'notes.new':'New note','notes.empty':'No notes yet.','notes.untitled':'Untitled note','notes.titlePh':'Note title','notes.contentPh':'Write in Markdown…','notes.delete':'Delete note','notes.gen':'Generate tasks','notes.select':'Select a note or create a new one.','notes.deleteConfirm':'Delete this note?','notes.tableMissing':'⚠ One-time setup needed: run supabase/notes.sql in your Supabase SQL Editor to sync notes to the cloud. (Notes are cached locally meanwhile.)',
     'gen.title':'Generate tasks from note','gen.none':'No list items found. Use "- item" bullets or "- [ ] item" checkboxes in your note.','gen.column':'Target column','gen.cancel':'Cancel','gen.create':'Create tasks',
   },
   'pt-BR': {
@@ -140,26 +140,26 @@ const I18N = {
     'auth.noAccount':'Não tem conta?','auth.loading':'Carregando…',
     'auth.restricted':'🔒 Acesso restrito — peça acesso ao administrador.',
     'auth.configError':'⚠️ Supabase não configurado. Edite o config.js com a URL e a key do projeto (veja o README.md).',
-    'auth.featKanban':'⊞ Kanban','auth.featCalendar':'📅 Calendário','auth.featRealtime':'⚡ Tempo real',
+    'auth.featKanban':'Kanban','auth.featCalendar':'Calendário','auth.featRealtime':'Tempo real',
     'auth.created':'Conta criada! Confirme pelo e-mail OU desative "Confirm email" no Supabase e entre.',
     'auth.errInvalid':'E-mail ou senha incorretos.','auth.errExists':'Esse e-mail já tem conta. Faça login.',
     'auth.errWeak':'A senha precisa de pelo menos 6 caracteres.','auth.errUnconfirmed':'E-mail não confirmado. Use o link ou desative a confirmação no Supabase.',
     'auth.errSignupOff':'Cadastros estão desativados. Peça acesso ao administrador.','auth.errRate':'Muitas tentativas. Espere um momento e tente de novo.','auth.errGeneric':'Algo deu errado. Tente de novo.',
-    'tb.export':'⤓ Exportar ▾','tb.exportJson':'⤓ Exportar como JSON','tb.exportCsv':'⤓ Exportar como CSV','tb.import':'⤒ Importar JSON',
-    'tb.addTask':'+ Nova tarefa','tb.theme':'Alternar tema claro/escuro','tb.sync':'Status de sincronização','tb.account':'Conta','tb.menu':'Menu',
-    'acct.sync':'⟳ Sincronizar agora','acct.signout':'⎋ Sair','acct.language':'Idioma',
-    'view.kanban':'⊞ Kanban','view.table':'☰ Tabela','view.cards':'▦ Cartões','view.calendar':'📅 Calendário','view.notes':'📝 Notas',
-    'sb.search':'Buscar tarefas...','sb.sortBy':'Ordenar por','sb.filter':'⏷ Filtrar','sb.group':'⊟ Agrupar','sb.groupTitle':'Agrupar tarefas',
+    'tb.export':'Exportar','tb.exportJson':'Exportar como JSON','tb.exportCsv':'Exportar como CSV','tb.import':'Importar JSON',
+    'tb.addTask':'Nova tarefa','tb.theme':'Alternar tema claro/escuro','tb.sync':'Status de sincronização','tb.account':'Conta','tb.menu':'Menu',
+    'acct.sync':'Sincronizar agora','acct.signout':'Sair','acct.language':'Idioma',
+    'view.kanban':'Kanban','view.table':'Tabela','view.cards':'Cartões','view.calendar':'Calendário','view.notes':'Notas',
+    'sb.search':'Buscar tarefas...','sb.sortBy':'Ordenar por','sb.filter':'Filtrar','sb.group':'Agrupar','sb.groupTitle':'Agrupar tarefas',
     'sort.manual':'Manual','sort.created':'Mais recentes','sort.deadline':'Prazo','sort.priority':'Prioridade','sort.title':'Título (A–Z)',
-    'side.addTask':'Nova tarefa','side.taskName':'Nome da tarefa','side.desc':'Descrição','side.priority':'Prioridade','side.deadline':'Prazo','side.column':'Coluna','side.addToBoard':'+ Adicionar ao quadro','side.overview':'Visão geral','side.addColumn':'+ Adicionar coluna','side.groups':'Grupos','side.addGroup':'+ Adicionar grupo',
+    'side.addTask':'Nova tarefa','side.taskName':'Nome da tarefa','side.desc':'Descrição','side.priority':'Prioridade','side.deadline':'Prazo','side.column':'Coluna','side.addToBoard':'Adicionar ao quadro','side.overview':'Visão geral','side.addColumn':'Adicionar coluna','side.groups':'Grupos','side.addGroup':'Adicionar grupo',
     'prio.Critical':'Crítica','prio.High':'Alta','prio.Medium':'Média','prio.Low':'Baixa',
-    'col.empty':'☁ Nenhuma tarefa aqui','col.addTask':'+ Nova tarefa','col.edit':'Editar coluna',
+    'col.empty':'Nenhuma tarefa aqui','col.addTask':'Nova tarefa','col.edit':'Editar coluna',
     'card.moveLeft':'Mover para a esquerda','card.moveRight':'Mover para a direita','card.edit':'Editar','card.delete':'Excluir',
     'empty.noMatch':'Nenhuma tarefa corresponde aos filtros.','groups.empty':'Nenhum grupo ainda.','group.edit':'Editar grupo','group.none':'Sem grupo',
     'dl.today':'Hoje','dl.tomorrow':'Amanhã',
     'th.task':'Tarefa','th.priority':'Prioridade','th.deadline':'Prazo','th.status':'Status','th.added':'Criada',
     'cal.prev':'Mês anterior','cal.next':'Próximo mês','cal.today':'Hoje','cal.noDeadline':'sem prazo',
-    'm.newTask':'Nova tarefa','m.editTask':'Editar tarefa','m.taskName':'Nome da tarefa','m.desc':'Descrição','m.priority':'Prioridade','m.deadline':'Prazo','m.column':'Coluna','m.group':'Grupo','m.noGroup':'— Sem grupo —','m.subtasks':'Subtarefas','m.addSubtask':'+ Nova subtarefa','m.noSubtasks':'Nenhuma subtarefa ainda.','m.subPlaceholder':'Subtarefa...','m.cancel':'Cancelar','m.save':'Salvar','m.remove':'Remover','m.of':'de','m.done':'concluídas',
+    'm.newTask':'Nova tarefa','m.editTask':'Editar tarefa','m.taskName':'Nome da tarefa','m.desc':'Descrição','m.priority':'Prioridade','m.deadline':'Prazo','m.column':'Coluna','m.group':'Grupo','m.noGroup':'— Sem grupo —','m.subtasks':'Subtarefas','m.addSubtask':'Nova subtarefa','m.noSubtasks':'Nenhuma subtarefa ainda.','m.subPlaceholder':'Subtarefa...','m.cancel':'Cancelar','m.save':'Salvar','m.remove':'Remover','m.of':'de','m.done':'concluídas',
     'c.newCol':'Nova coluna','c.editCol':'Editar coluna','c.name':'Nome','c.color':'Cor','c.delete':'Excluir coluna','c.cantDeleteLast':'Você não pode excluir a última coluna.',
     'c.confirmDel':'Excluir "{name}"?','c.confirmDelMove':'Excluir "{name}"?\n\n{n} tarefa(s) serão movidas para "{other}".',
     'g.newGroup':'Novo grupo','g.editGroup':'Editar grupo','g.delete':'Excluir grupo','g.confirmDel':'Excluir o grupo "{name}"?','g.confirmDelTasks':'\n\n{n} tarefa(s) ficarão sem grupo.',
@@ -168,34 +168,34 @@ const I18N = {
     'sync.idle':'Offline — alterações salvas só neste dispositivo','sync.saving':'Salvando…','sync.synced':'Tudo sincronizado','sync.error':'Erro de sincronização — vamos tentar de novo',
     'confirm.delTask':'Excluir "{name}"?','confirm.signout':'Sair da sua conta? Os dados continuam salvos no Supabase.',
     'import.invalid':'Arquivo JSON inválido — campo "tasks" não encontrado.','import.confirm':'Importar {n} tarefas? Isso substitui os dados atuais.','import.error':'Erro ao ler arquivo: ',
-    'notes.new':'+ Nova nota','notes.empty':'Nenhuma nota ainda.','notes.untitled':'Nota sem título','notes.titlePh':'Título da nota','notes.contentPh':'Escreva em Markdown…','notes.delete':'Excluir nota','notes.gen':'⚡ Gerar tarefas','notes.select':'Selecione uma nota ou crie uma nova.','notes.deleteConfirm':'Excluir esta nota?','notes.tableMissing':'⚠ Configuração única: rode supabase/notes.sql no SQL Editor do Supabase para sincronizar as notas na nuvem. (As notas ficam salvas localmente enquanto isso.)',
+    'notes.new':'Nova nota','notes.empty':'Nenhuma nota ainda.','notes.untitled':'Nota sem título','notes.titlePh':'Título da nota','notes.contentPh':'Escreva em Markdown…','notes.delete':'Excluir nota','notes.gen':'Gerar tarefas','notes.select':'Selecione uma nota ou crie uma nova.','notes.deleteConfirm':'Excluir esta nota?','notes.tableMissing':'⚠ Configuração única: rode supabase/notes.sql no SQL Editor do Supabase para sincronizar as notas na nuvem. (As notas ficam salvas localmente enquanto isso.)',
     'gen.title':'Gerar tarefas da nota','gen.none':'Nenhum item de lista encontrado. Use marcadores "- item" ou caixas "- [ ] item" na nota.','gen.column':'Coluna destino','gen.cancel':'Cancelar','gen.create':'Criar tarefas',
   },
 };
 I18N.en.weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 I18N['pt-BR'].weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 Object.assign(I18N.en, {
-  'tk.tab':'🎫 Tickets','tk.title':'Tickets','tk.all':'All','tk.empty':'No tickets match.','tk.openCount':'open',
+  'tk.tab':'Tickets','tk.title':'Tickets','tk.all':'All','tk.empty':'No tickets match.','tk.openCount':'open',
   'tk.status':'Status','tk.priority':'Priority','tk.comments':'Comments','tk.noComments':'No comments yet.',
   'tk.reply':'Reply to the requester…','tk.send':'Send','tk.close':'Close',
-  'tk.convert':'⤴ Convert to task','tk.converted':'✓ Converted to a task','tk.convertedMsg':'Added to your board (To Do).','tk.youAdmin':'You (admin)',
+  'tk.convert':'Convert to task','tk.converted':'✓ Converted to a task','tk.convertedMsg':'Added to your board (To Do).','tk.youAdmin':'You (admin)',
   'tk.st.Open':'Open','tk.st.In progress':'In progress','tk.st.Waiting':'Waiting','tk.st.Done':'Done','tk.st.Rejected':'Rejected',
   'tk.cat.Change':'Change','tk.cat.Addition':'Addition','tk.cat.Improvement':'Improvement','tk.cat.Bug':'Bug','tk.cat.Question':'Question',
   'tk.pr.Low':'Low','tk.pr.Medium':'Medium','tk.pr.High':'High','tk.pr.Critical':'Critical',
 });
 Object.assign(I18N['pt-BR'], {
-  'tk.tab':'🎫 Chamados','tk.title':'Chamados','tk.all':'Todos','tk.empty':'Nenhum chamado.','tk.openCount':'em aberto',
+  'tk.tab':'Chamados','tk.title':'Chamados','tk.all':'Todos','tk.empty':'Nenhum chamado.','tk.openCount':'em aberto',
   'tk.status':'Status','tk.priority':'Prioridade','tk.comments':'Comentários','tk.noComments':'Nenhum comentário ainda.',
   'tk.reply':'Responder ao solicitante…','tk.send':'Enviar','tk.close':'Fechar',
-  'tk.convert':'⤴ Converter em tarefa','tk.converted':'✓ Convertido em tarefa','tk.convertedMsg':'Adicionado ao seu board (To Do).','tk.youAdmin':'Você (admin)',
+  'tk.convert':'Converter em tarefa','tk.converted':'✓ Convertido em tarefa','tk.convertedMsg':'Adicionado ao seu board (To Do).','tk.youAdmin':'Você (admin)',
   'tk.st.Open':'Aberto','tk.st.In progress':'Em andamento','tk.st.Waiting':'Aguardando','tk.st.Done':'Concluído','tk.st.Rejected':'Recusado',
   'tk.cat.Change':'Alteração','tk.cat.Addition':'Inclusão','tk.cat.Improvement':'Melhoria','tk.cat.Bug':'Bug','tk.cat.Question':'Dúvida',
   'tk.pr.Low':'Baixa','tk.pr.Medium':'Média','tk.pr.High':'Alta','tk.pr.Critical':'Crítica',
 });
 Object.assign(I18N.en, { 'notes.split':'Split','notes.md':'Markdown','notes.rich':'Rich','notes.focus':'Focus mode','notes.exitFocus':'Exit focus' });
 Object.assign(I18N['pt-BR'], { 'notes.split':'Dividido','notes.md':'Markdown','notes.rich':'Visual','notes.focus':'Modo foco','notes.exitFocus':'Sair do foco' });
-Object.assign(I18N.en, { 'an.tab':'📊 Analytics','an.title':'Analytics','an.kTotal':'Total tasks','an.kDone':'Completed','an.kOpen':'Open','an.kOverdue':'Overdue','an.kRate':'Completion','an.doneWeek':'done this week','an.doneMonth':'done (30 days)','an.dueSoon':'due in 7 days','an.byStatus':'Tasks by status','an.byPriority':'Tasks by priority','an.byGroup':'Tasks by group','an.completions':'Completed per week (last 8)','an.subtasks':'Subtasks','an.subtaskProgress':'{d} of {t} subtasks done','an.notes':'Notes','an.noteCount':'Notes','an.noteWords':'Words written','an.lastEdited':'Last edited','an.never':'—','an.tickets':'Tickets','an.tkOpen':'Open','an.tkDone':'Resolved','an.byCategory':'By category','an.noData':'No data yet.','an.completionsHint':'Tracked from now on.' });
-Object.assign(I18N['pt-BR'], { 'an.tab':'📊 Análise','an.title':'Análise','an.kTotal':'Total de tarefas','an.kDone':'Concluídas','an.kOpen':'Em aberto','an.kOverdue':'Atrasadas','an.kRate':'Conclusão','an.doneWeek':'concluídas na semana','an.doneMonth':'concluídas (30 dias)','an.dueSoon':'vencem em 7 dias','an.byStatus':'Tarefas por status','an.byPriority':'Tarefas por prioridade','an.byGroup':'Tarefas por grupo','an.completions':'Concluídas por semana (últimas 8)','an.subtasks':'Subtarefas','an.subtaskProgress':'{d} de {t} subtarefas concluídas','an.notes':'Notas','an.noteCount':'Notas','an.noteWords':'Palavras escritas','an.lastEdited':'Última edição','an.never':'—','an.tickets':'Chamados','an.tkOpen':'Abertos','an.tkDone':'Resolvidos','an.byCategory':'Por categoria','an.noData':'Sem dados ainda.','an.completionsHint':'Registrado a partir de agora.' });
+Object.assign(I18N.en, { 'an.tab':'Analytics','an.title':'Analytics','an.kTotal':'Total tasks','an.kDone':'Completed','an.kOpen':'Open','an.kOverdue':'Overdue','an.kRate':'Completion','an.doneWeek':'done this week','an.doneMonth':'done (30 days)','an.dueSoon':'due in 7 days','an.byStatus':'Tasks by status','an.byPriority':'Tasks by priority','an.byGroup':'Tasks by group','an.completions':'Completed per week (last 8)','an.subtasks':'Subtasks','an.subtaskProgress':'{d} of {t} subtasks done','an.notes':'Notes','an.noteCount':'Notes','an.noteWords':'Words written','an.lastEdited':'Last edited','an.never':'—','an.tickets':'Tickets','an.tkOpen':'Open','an.tkDone':'Resolved','an.byCategory':'By category','an.noData':'No data yet.','an.completionsHint':'Tracked from now on.' });
+Object.assign(I18N['pt-BR'], { 'an.tab':'Análise','an.title':'Análise','an.kTotal':'Total de tarefas','an.kDone':'Concluídas','an.kOpen':'Em aberto','an.kOverdue':'Atrasadas','an.kRate':'Conclusão','an.doneWeek':'concluídas na semana','an.doneMonth':'concluídas (30 dias)','an.dueSoon':'vencem em 7 dias','an.byStatus':'Tarefas por status','an.byPriority':'Tarefas por prioridade','an.byGroup':'Tarefas por grupo','an.completions':'Concluídas por semana (últimas 8)','an.subtasks':'Subtarefas','an.subtaskProgress':'{d} de {t} subtarefas concluídas','an.notes':'Notas','an.noteCount':'Notas','an.noteWords':'Palavras escritas','an.lastEdited':'Última edição','an.never':'—','an.tickets':'Chamados','an.tkOpen':'Abertos','an.tkDone':'Resolvidos','an.byCategory':'Por categoria','an.noData':'Sem dados ainda.','an.completionsHint':'Registrado a partir de agora.' });
 Object.assign(I18N.en, { 'tb.changePhoto':'Change photo','tb.removePhoto':'Remove photo','tb.toggleSidebar':'Show / hide the sidebar','cols.btn':'Columns','cols.title':'Show columns' });
 Object.assign(I18N['pt-BR'], { 'tb.changePhoto':'Trocar foto','tb.removePhoto':'Remover foto','tb.toggleSidebar':'Mostrar / ocultar a barra lateral','cols.btn':'Colunas','cols.title':'Mostrar colunas' });
 Object.assign(I18N.en, { 'rt.smaller':'Smaller text','rt.bigger':'Bigger text','rt.highlight':'Highlight','rt.clearHl':'Clear highlight' });
@@ -460,8 +460,8 @@ function richEditorMarkup(id) {
       <span class="rich-hl" data-hl="#bfe0ff" style="background:#bfe0ff" title="${escHtml(tr('rt.highlight'))}"></span>
       <span class="rich-hl rich-hl-clear" data-hl="transparent" title="${escHtml(tr('rt.clearHl'))}">⌀</span>
       <span class="rich-sep"></span>
-      <button type="button" data-link="1" title="${escHtml(tr('rt.link'))}">🔗</button>
-      <button type="button" data-cmd="removeFormat" title="${escHtml(tr('rt.clear'))}">⌫</button>
+      <button type="button" data-link="1" title="${escHtml(tr('rt.link'))}"><i data-lucide="link"></i></button>
+      <button type="button" data-cmd="removeFormat" title="${escHtml(tr('rt.clear'))}"><i data-lucide="eraser"></i></button>
     </div>
     <div class="rich-editor" id="${id}" contenteditable="true" data-placeholder="${escHtml(tr('rt.placeholder'))}"></div>
   `;
@@ -563,7 +563,7 @@ function subtaskChipHtml(t) {
   const { done, total } = subtaskCounts(t);
   if (!total) return '';
   const cls = (done === total) ? ' complete' : '';
-  return `<span class="chip chip-subtask${cls}">☑ ${done}/${total}</span>`;
+  return `<span class="chip chip-subtask${cls}"><i data-lucide="check-square"></i> ${done}/${total}</span>`;
 }
 
 // ============================================================
@@ -631,12 +631,12 @@ function renderKanban(board) {
       <section class="col" data-col="${escHtml(c.id)}">
         <div class="col-header" data-col-header="${escHtml(c.id)}" draggable="true" style="background:${escHtml(c.color)}">
           <div class="col-header-left">
-            <span class="col-header-grip">⋮⋮</span>
+            <span class="col-header-grip"><i data-lucide="grip-vertical"></i></span>
             <span class="col-header-name">${escHtml(c.name)}</span>
           </div>
           <div class="col-header-right">
             <span class="col-badge">${items.length}</span>
-            <button class="col-menu-btn" data-edit-col="${escHtml(c.id)}" title="${escHtml(tr('col.edit'))}">⋯</button>
+            <button class="col-menu-btn" data-edit-col="${escHtml(c.id)}" title="${escHtml(tr('col.edit'))}"><i data-lucide="more-horizontal"></i></button>
           </div>
         </div>
         <div class="col-body" data-col-body="${escHtml(c.id)}">${cards}</div>
@@ -718,9 +718,9 @@ function renderCalendar(board) {
     '<div class="cal-wrap">' +
       '<div class="cal-toolbar">' +
         '<div class="cal-nav">' +
-          '<button class="icon-btn" id="cal-prev" title="' + escHtml(tr('cal.prev')) + '">&#8249;</button>' +
+          '<button class="icon-btn" id="cal-prev" title="' + escHtml(tr('cal.prev')) + '"><i data-lucide="chevron-left"></i></button>' +
           '<button class="btn-ghost" id="cal-today" style="padding:6px 12px">' + escHtml(tr('cal.today')) + '</button>' +
-          '<button class="icon-btn" id="cal-next" title="' + escHtml(tr('cal.next')) + '">&#8250;</button>' +
+          '<button class="icon-btn" id="cal-next" title="' + escHtml(tr('cal.next')) + '"><i data-lucide="chevron-right"></i></button>' +
         '</div>' +
         '<div class="cal-month">' + escHtml(monthLabel) + '</div>' +
         '<div class="cal-legend">' + (undated ? undated + ' ' + tr('cal.noDeadline') : '') + '</div>' +
@@ -820,8 +820,8 @@ function tableRowHtml(t) {
       <td>${colChip}</td>
       <td style="color:var(--text-light);font-size:12px;">${createdStr}</td>
       <td class="t-actions">
-        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="${escHtml(tr('card.edit'))}">✎</button>
-        <button class="icon-btn" data-del="${escHtml(t.id)}" title="${escHtml(tr('card.delete'))}">✕</button>
+        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="${escHtml(tr('card.edit'))}"><i data-lucide="pencil"></i></button>
+        <button class="icon-btn" data-del="${escHtml(t.id)}" title="${escHtml(tr('card.delete'))}"><i data-lucide="x"></i></button>
       </td>
     </tr>
   `;
@@ -841,9 +841,9 @@ function cardHtml(t, showColumnChip) {
   const grp = (t.group && !groupBy) ? getGroup(t.group) : null;
   const groupChip = grp ? `<span class="chip chip-col" style="background:${escHtml(grp.color)}">${escHtml(grp.name)}</span>` : '';
   const prevBtn = colIdx > 0
-    ? `<button class="icon-btn" data-move="prev" data-id="${escHtml(t.id)}" title="${escHtml(tr('card.moveLeft'))}">←</button>` : '';
+    ? `<button class="icon-btn" data-move="prev" data-id="${escHtml(t.id)}" title="${escHtml(tr('card.moveLeft'))}"><i data-lucide="chevron-left"></i></button>` : '';
   const nextBtn = colIdx > -1 && colIdx < columns.length - 1
-    ? `<button class="icon-btn" data-move="next" data-id="${escHtml(t.id)}" title="${escHtml(tr('card.moveRight'))}">→</button>` : '';
+    ? `<button class="icon-btn" data-move="next" data-id="${escHtml(t.id)}" title="${escHtml(tr('card.moveRight'))}"><i data-lucide="chevron-right"></i></button>` : '';
   const draggable = currentView === 'kanban' ? 'draggable="true"' : '';
   return `
     <article class="card priority-${escHtml(t.priority)}" ${draggable} data-id="${escHtml(t.id)}">
@@ -858,8 +858,8 @@ function cardHtml(t, showColumnChip) {
       </div>
       <div class="card-actions">
         ${prevBtn}${nextBtn}
-        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="${escHtml(tr('card.edit'))}">✎</button>
-        <button class="icon-btn" data-del="${escHtml(t.id)}" title="${escHtml(tr('card.delete'))}">✕</button>
+        <button class="icon-btn" data-edit="${escHtml(t.id)}" title="${escHtml(tr('card.edit'))}"><i data-lucide="pencil"></i></button>
+        <button class="icon-btn" data-del="${escHtml(t.id)}" title="${escHtml(tr('card.delete'))}"><i data-lucide="x"></i></button>
       </div>
     </article>
   `;
@@ -891,7 +891,7 @@ function renderGroupsList() {
       <span class="g-dot" style="background:${escHtml(g.color)}"></span>
       <span class="g-name">${escHtml(g.name)}</span>
       <span class="group-count">${counts[g.id] || 0}</span>
-      <button class="g-edit" data-edit-group="${escHtml(g.id)}" title="${escHtml(tr('group.edit'))}">⋯</button>
+      <button class="g-edit" data-edit-group="${escHtml(g.id)}" title="${escHtml(tr('group.edit'))}"><i data-lucide="more-horizontal"></i></button>
     </div>
   `).join('');
   el.querySelectorAll('[data-edit-group]').forEach(node => {
@@ -1203,9 +1203,10 @@ function renderModalSubtasks() {
     <div class="subtask-row" data-idx="${i}">
       <input type="checkbox" class="subtask-check" ${st.done ? 'checked' : ''}>
       <input type="text" class="subtask-text ${st.done ? 'done' : ''}" value="${escHtml(st.text)}" placeholder="${escHtml(tr('m.subPlaceholder'))}">
-      <button type="button" class="subtask-del" title="${escHtml(tr('m.remove'))}">✕</button>
+      <button type="button" class="subtask-del" title="${escHtml(tr('m.remove'))}"><i data-lucide="x"></i></button>
     </div>
   `).join('');
+  refreshIcons();
 }
 
 function setupSubtaskHandlers() {
@@ -1330,6 +1331,7 @@ function openTaskModal(id) {
   setupRichEditor(descEditor, document.getElementById('m-desc-toolbar'));
   renderModalSubtasks();
   setupSubtaskHandlers();
+  refreshIcons();
 
   function close() {
     if (backdrop.parentNode) document.body.removeChild(backdrop);
@@ -2074,9 +2076,9 @@ function renderNotes(board) {
          <input type="text" id="note-title" class="note-title-input" value="${escHtml(active.title)}" placeholder="${escHtml(tr('notes.titlePh'))}">
          <div class="note-head-actions">
            <div class="note-modes">${modeBtn('split', tr('notes.split'))}${modeBtn('md', tr('notes.md'))}${modeBtn('rich', tr('notes.rich'))}</div>
-           <button class="icon-btn" id="note-focus" title="${escHtml(noteFocus ? tr('notes.exitFocus') : tr('notes.focus'))}">${noteFocus ? '⤡' : '⤢'}</button>
+           <button class="icon-btn" id="note-focus" title="${escHtml(noteFocus ? tr('notes.exitFocus') : tr('notes.focus'))}">${noteFocus ? '<i data-lucide="minimize-2"></i>' : '<i data-lucide="maximize-2"></i>'}</button>
            <button class="btn-ghost" id="note-gen">${escHtml(tr('notes.gen'))}</button>
-           <button class="icon-btn" id="note-del" title="${escHtml(tr('notes.delete'))}">🗑</button>
+           <button class="icon-btn" id="note-del" title="${escHtml(tr('notes.delete'))}"><i data-lucide="trash-2"></i></button>
          </div>
        </div>
        <div class="note-body note-mode-${noteMode}">${editorBody}</div>`
@@ -2409,7 +2411,7 @@ function renderAnalytics(board) {
   board.innerHTML = '<div class="an-wrap">' +
     '<h2 class="an-h2">' + escHtml(tr('an.title')) + '</h2>' +
     '<div class="an-cards">' + cards + '</div>' +
-    '<div class="an-mini"><span>✅ <b>' + doneWeek + '</b> ' + escHtml(tr('an.doneWeek')) + '</span><span>🗓️ <b>' + doneMonth + '</b> ' + escHtml(tr('an.doneMonth')) + '</span><span>⏰ <b>' + dueSoon + '</b> ' + escHtml(tr('an.dueSoon')) + '</span></div>' +
+    '<div class="an-mini"><span><i data-lucide="check-circle-2"></i> <b>' + doneWeek + '</b> ' + escHtml(tr('an.doneWeek')) + '</span><span><i data-lucide="calendar-days"></i> <b>' + doneMonth + '</b> ' + escHtml(tr('an.doneMonth')) + '</span><span><i data-lucide="alarm-clock"></i> <b>' + dueSoon + '</b> ' + escHtml(tr('an.dueSoon')) + '</span></div>' +
     '<div class="an-grid">' +
       '<div class="an-section"><h3>' + escHtml(tr('an.byStatus')) + '</h3>' + byStatus + '</div>' +
       '<div class="an-section"><h3>' + escHtml(tr('an.byPriority')) + '</h3>' + byPrio + '</div>' +
@@ -2418,7 +2420,7 @@ function renderAnalytics(board) {
     '</div>' +
     '<div class="an-section"><h3>' + escHtml(tr('an.subtasks')) + '</h3>' + subProgress + '</div>' +
     '<div class="an-section"><h3>' + escHtml(tr('an.notes')) + '</h3><div class="an-cards">' + anCard(noteCount, tr('an.noteCount')) + anCard(noteWords, tr('an.noteWords')) + '</div>' +
-      '<div class="an-mini"><span>📝 ' + escHtml(tr('an.lastEdited')) + ': <b>' + escHtml(lastNote) + '</b></span></div></div>' +
+      '<div class="an-mini"><span><i data-lucide="file-text"></i> ' + escHtml(tr('an.lastEdited')) + ': <b>' + escHtml(lastNote) + '</b></span></div></div>' +
     ticketsSection +
   '</div>';
 }
@@ -2563,7 +2565,7 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(STORE_THEME, theme);
   const btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = theme === 'dark' ? '☀' : '☾';
+  if (btn) { btn.innerHTML = '<i data-lucide="' + (theme === 'dark' ? 'sun' : 'moon') + '"></i>'; refreshIcons(); }
 }
 function loadTheme() {
   let theme = localStorage.getItem(STORE_THEME);

@@ -44,9 +44,9 @@
     <div class="auth-error" id="auth-config-error" data-i18n="auth.configError" hidden>⚠️ Supabase not configured. Edit config.js (see README.md).</div>
 
     <div class="auth-features">
-      <span data-i18n="auth.featKanban">⊞ Kanban</span>
-      <span data-i18n="auth.featCalendar">📅 Calendar</span>
-      <span data-i18n="auth.featRealtime">⚡ Real-time</span>
+      <span><i data-lucide="layout-grid"></i> <span data-i18n="auth.featKanban">Kanban</span></span>
+      <span><i data-lucide="calendar"></i> <span data-i18n="auth.featCalendar">Calendar</span></span>
+      <span><i data-lucide="zap"></i> <span data-i18n="auth.featRealtime">Real-time</span></span>
     </div>
     <div class="auth-lang">
       <button type="button" data-setlang="en">EN</button>
@@ -59,30 +59,30 @@
 <div id="app-root" hidden>
 
 <header class="topbar">
-  <button class="hamburger" id="hamburger" aria-label="Menu" data-i18n-title="tb.menu">☰</button>
+  <button class="hamburger" id="hamburger" aria-label="Menu" data-i18n-title="tb.menu"><i data-lucide="menu"></i></button>
   <button class="icon-btn topbar-toggle" id="sidebar-toggle" data-i18n-title="tb.toggleSidebar" title="Show/hide sidebar"><i data-lucide="panel-left"></i></button>
   <div class="logo">
     <div class="dots"><span class="dot r"></span><span class="dot o"></span><span class="dot p"></span></div>
   </div>
   <div class="board-name">João Querino Task Board</div>
   <div class="topbar-spacer"></div>
-  <button class="theme-btn" id="theme-btn" data-i18n-title="tb.theme" title="Toggle light/dark theme">☾</button>
+  <button class="theme-btn" id="theme-btn" data-i18n-title="tb.theme" title="Toggle light/dark theme"><i data-lucide="moon"></i></button>
   <div class="sync-cluster">
     <span class="sync-dot" id="sync-dot" data-i18n-title="tb.sync" title="Sync status"></span>
   </div>
   <div class="dropdown">
-    <button class="btn-ghost" id="export-btn" data-i18n="tb.export">⤓ Export ▾</button>
+    <button class="btn-ghost" id="export-btn"><i data-lucide="download"></i><span data-i18n="tb.export">Export</span><i data-lucide="chevron-down" class="caret-ic"></i></button>
     <div class="dropdown-menu" id="export-menu" hidden>
-      <button class="dropdown-item" data-export="json" data-i18n="tb.exportJson">⤓ Export as JSON</button>
-      <button class="dropdown-item" data-export="csv" data-i18n="tb.exportCsv">⤓ Export as CSV</button>
+      <button class="dropdown-item" data-export="json"><i data-lucide="file-down"></i><span data-i18n="tb.exportJson">Export as JSON</span></button>
+      <button class="dropdown-item" data-export="csv"><i data-lucide="sheet"></i><span data-i18n="tb.exportCsv">Export as CSV</span></button>
       <hr style="margin:4px 0;border:0;border-top:1px solid var(--border)">
       <label class="dropdown-item import-file-btn">
-        <span data-i18n="tb.import">⤒ Import JSON</span>
+        <i data-lucide="upload"></i><span data-i18n="tb.import">Import JSON</span>
         <input type="file" id="import-file" accept=".json">
       </label>
     </div>
   </div>
-  <button class="btn-primary" id="open-modal" data-i18n="tb.addTask">+ Add Task</button>
+  <button class="btn-primary" id="open-modal"><i data-lucide="plus"></i><span data-i18n="tb.addTask">Add Task</span></button>
   <div class="dropdown">
     <button class="account-btn" id="account-btn" data-i18n-title="tb.account" title="Account">?</button>
     <div class="dropdown-menu" id="account-menu" hidden style="min-width:220px">
@@ -91,8 +91,8 @@
       <button class="dropdown-item" id="acct-photo"><i data-lucide="image"></i> <span data-i18n="tb.changePhoto">Change photo</span></button>
       <button class="dropdown-item" id="acct-photo-remove"><i data-lucide="image-off"></i> <span data-i18n="tb.removePhoto">Remove photo</span></button>
       <input type="file" id="avatar-input" accept="image/*" hidden>
-      <button class="dropdown-item" id="acct-sync" data-i18n="acct.sync">⟳ Sync now</button>
-      <button class="dropdown-item" id="acct-signout" data-i18n="acct.signout">⎋ Sign out</button>
+      <button class="dropdown-item" id="acct-sync"><i data-lucide="refresh-cw"></i><span data-i18n="acct.sync">Sync now</span></button>
+      <button class="dropdown-item" id="acct-signout"><i data-lucide="log-out"></i><span data-i18n="acct.signout">Sign out</span></button>
       <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
       <div class="acct-lang-row">
         <span data-i18n="acct.language">Language</span>
@@ -107,14 +107,14 @@
 
 <div class="subbar">
   <div class="view-switch" id="view-switch">
-    <button data-view="kanban" class="active" data-i18n="view.kanban">⊞ Kanban</button>
-    <button data-view="table" data-i18n="view.table">☰ Table</button>
-    <button data-view="cards" data-i18n="view.cards">▦ Cards</button>
-    <button data-view="calendar" data-i18n="view.calendar">📅 Calendar</button>
-    <button data-view="notes" data-i18n="view.notes">📝 Notes</button>
-    <button data-view="slides" data-i18n="pres.tab">Presentations</button>
-    <button data-view="analytics" data-i18n="an.tab">📊 Analytics</button>
-    <button data-view="tickets" data-i18n="tk.tab" hidden>🎫 Tickets</button>
+    <button data-view="kanban" class="active"><i data-lucide="layout-grid"></i><span data-i18n="view.kanban">Kanban</span></button>
+    <button data-view="table"><i data-lucide="table-2"></i><span data-i18n="view.table">Table</span></button>
+    <button data-view="cards"><i data-lucide="layout-dashboard"></i><span data-i18n="view.cards">Cards</span></button>
+    <button data-view="calendar"><i data-lucide="calendar"></i><span data-i18n="view.calendar">Calendar</span></button>
+    <button data-view="notes"><i data-lucide="notebook-pen"></i><span data-i18n="view.notes">Notes</span></button>
+    <button data-view="slides"><i data-lucide="presentation"></i><span data-i18n="pres.tab">Presentations</span></button>
+    <button data-view="analytics"><i data-lucide="bar-chart-3"></i><span data-i18n="an.tab">Analytics</span></button>
+    <button data-view="tickets" hidden><i data-lucide="ticket"></i><span data-i18n="tk.tab">Tickets</span></button>
   </div>
   <input class="search-input" id="search" data-i18n-ph="sb.search" placeholder="Search tasks...">
   <span class="sort-label" data-i18n="sb.sortBy">Sort by</span>
@@ -126,10 +126,10 @@
     <option value="title" data-i18n="sort.title">Title (A–Z)</option>
   </select>
   <div class="filter-btn-wrap">
-    <button class="btn-ghost filter-btn" id="filter-btn"><span data-i18n="sb.filter">⏷ Filter</span> <span class="badge" id="filter-badge" hidden>0</span></button>
+    <button class="btn-ghost filter-btn" id="filter-btn"><i data-lucide="filter"></i><span data-i18n="sb.filter">Filter</span> <span class="badge" id="filter-badge" hidden>0</span></button>
     <div class="filter-popover" id="filter-popover" hidden></div>
   </div>
-  <button class="btn-ghost" id="groupby-btn" data-i18n="sb.group" data-i18n-title="sb.groupTitle" title="Group tasks">⊟ Group</button>
+  <button class="btn-ghost" id="groupby-btn" data-i18n-title="sb.groupTitle" title="Group tasks"><i data-lucide="group"></i><span data-i18n="sb.group">Group</span></button>
   <div class="filter-btn-wrap">
     <button class="btn-ghost" id="columns-btn" data-i18n-title="cols.btn" title="Columns"><i data-lucide="columns-3"></i> <span data-i18n="cols.btn">Columns</span></button>
     <div class="filter-popover" id="columns-popover" hidden></div>
@@ -167,16 +167,16 @@
         <label for="s-col" data-i18n="side.column">Column</label>
         <select id="s-col"></select>
       </div>
-      <button type="submit" class="btn-primary" style="width:100%; margin-top:4px;" data-i18n="side.addToBoard">+ Add to Board</button>
+      <button type="submit" class="btn-primary" style="width:100%; margin-top:4px;"><i data-lucide="plus"></i><span data-i18n="side.addToBoard">Add to Board</span></button>
     </form>
     <hr class="divider">
     <h3 data-i18n="side.overview">Overview</h3>
     <div id="overview"></div>
-    <button class="add-col-side" id="add-col-side" data-i18n="side.addColumn">+ Add column</button>
+    <button class="add-col-side" id="add-col-side"><i data-lucide="plus"></i><span data-i18n="side.addColumn">Add column</span></button>
     <hr class="divider">
     <h3 data-i18n="side.groups">Groups</h3>
     <div id="groups-list"></div>
-    <button class="add-col-side" id="add-group-side" data-i18n="side.addGroup">+ Add group</button>
+    <button class="add-col-side" id="add-group-side"><i data-lucide="plus"></i><span data-i18n="side.addGroup">Add group</span></button>
   </aside>
 
   <main class="board view-kanban" id="board"></main>
