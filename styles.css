@@ -1172,3 +1172,29 @@ body.analytics-active #groupby-btn { display: none; }
 .an-colval { font-size: 11px; font-weight: 700; color: var(--text-light); min-height: 14px; }
 .an-colbar { width: 100%; max-width: 36px; background: var(--purple); border-radius: 5px 5px 0 0; transition: height 0.3s ease; }
 .an-collbl { font-size: 10px; color: var(--text-light); }
+
+/* ===============================================
+   LUCIDE ICONS + AVATAR + SIDEBAR COLLAPSE
+   =============================================== */
+.lucide, svg.lucide, [data-lucide] { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; vertical-align: -3px; }
+.btn-ghost svg.lucide, .btn-primary svg.lucide, .btn-secondary svg.lucide, .dropdown-item svg.lucide { width: 15px; height: 15px; }
+.view-switch button svg.lucide { width: 15px; height: 15px; margin-right: 2px; }
+.icon-btn svg.lucide { width: 15px; height: 15px; }
+.card-actions svg.lucide, .subtask-del svg.lucide, .t-actions svg.lucide { width: 14px; height: 14px; }
+.rich-toolbar svg.lucide { width: 15px; height: 15px; }
+.col-header svg.lucide, .col-header-grip svg.lucide { width: 14px; height: 14px; }
+.note-mode-btn svg.lucide { width: 13px; height: 13px; }
+.chip svg.lucide { width: 11px; height: 11px; vertical-align: -2px; }
+button svg.lucide, a svg.lucide { pointer-events: none; }
+.dropdown-item { gap: 8px; }
+
+/* Avatar */
+.account-btn.has-avatar { padding: 0; overflow: hidden; background: transparent; border-color: var(--border); }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+
+/* Sidebar collapse (desktop only; mobile uses the hamburger drawer) */
+.topbar-toggle { display: none; }
+@media (min-width: 821px) {
+  .topbar-toggle { display: inline-flex; }
+  body.sidebar-hidden .sidebar { display: none; }
+}

@@ -60,6 +60,7 @@
 
 <header class="topbar">
   <button class="hamburger" id="hamburger" aria-label="Menu" data-i18n-title="tb.menu">☰</button>
+  <button class="icon-btn topbar-toggle" id="sidebar-toggle" data-i18n-title="tb.toggleSidebar" title="Show/hide sidebar"><i data-lucide="panel-left"></i></button>
   <div class="logo">
     <div class="dots"><span class="dot r"></span><span class="dot o"></span><span class="dot p"></span></div>
   </div>
@@ -87,6 +88,9 @@
     <div class="dropdown-menu" id="account-menu" hidden style="min-width:220px">
       <div class="account-email" id="acct-email"></div>
       <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
+      <button class="dropdown-item" id="acct-photo"><i data-lucide="image"></i> <span data-i18n="tb.changePhoto">Change photo</span></button>
+      <button class="dropdown-item" id="acct-photo-remove"><i data-lucide="image-off"></i> <span data-i18n="tb.removePhoto">Remove photo</span></button>
+      <input type="file" id="avatar-input" accept="image/*" hidden>
       <button class="dropdown-item" id="acct-sync" data-i18n="acct.sync">⟳ Sync now</button>
       <button class="dropdown-item" id="acct-signout" data-i18n="acct.signout">⎋ Sign out</button>
       <hr style="margin:6px 0;border:0;border-top:1px solid var(--border)">
@@ -125,6 +129,10 @@
     <div class="filter-popover" id="filter-popover" hidden></div>
   </div>
   <button class="btn-ghost" id="groupby-btn" data-i18n="sb.group" data-i18n-title="sb.groupTitle" title="Group tasks">⊟ Group</button>
+  <div class="filter-btn-wrap">
+    <button class="btn-ghost" id="columns-btn" data-i18n-title="cols.btn" title="Columns"><i data-lucide="columns-3"></i> <span data-i18n="cols.btn">Columns</span></button>
+    <div class="filter-popover" id="columns-popover" hidden></div>
+  </div>
 </div>
 
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -181,6 +189,8 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <!-- HTML→Markdown for the Notes "Rich" editor (window.TurndownService) -->
 <script src="https://cdn.jsdelivr.net/npm/turndown/dist/turndown.min.js"></script>
+<!-- Lucide icons (window.lucide.createIcons) -->
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 <!-- Your project URL + key -->
 <script src="config.js"></script>
 <!-- App -->
