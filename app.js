@@ -38,7 +38,7 @@ let pullTimer = null;
 let pendingSave = false;
 let lastPushAt = 0;
 let rtChannel = null;
-const dirty = { tasks: false, columns: false, groups: false, notes: false };
+const dirty = { tasks: false, columns: false, groups: false, notes: false, presentations: false };
 let seenCols = new Set();
 let seenGroups = new Set();
 let dragIndicator = null;        // card drop placeholder
@@ -48,6 +48,9 @@ let columnDragId = null;         // id of column being dragged
 let notes = [];
 let activeNoteId = null;
 let notesTableMissing = false;
+let presentations = [];
+let activeDeckId = null;
+let decksTableMissing = false;
 // Tickets (admin)
 let USER_ROLE = 'requester';
 let tickets = [];
@@ -197,6 +200,8 @@ Object.assign(I18N.en, { 'tb.changePhoto':'Change photo','tb.removePhoto':'Remov
 Object.assign(I18N['pt-BR'], { 'tb.changePhoto':'Trocar foto','tb.removePhoto':'Remover foto','tb.toggleSidebar':'Mostrar / ocultar a barra lateral','cols.btn':'Colunas','cols.title':'Mostrar colunas' });
 Object.assign(I18N.en, { 'rt.smaller':'Smaller text','rt.bigger':'Bigger text','rt.highlight':'Highlight','rt.clearHl':'Clear highlight' });
 Object.assign(I18N['pt-BR'], { 'rt.smaller':'Diminuir fonte','rt.bigger':'Aumentar fonte','rt.highlight':'Marca-texto','rt.clearHl':'Remover marca-texto' });
+Object.assign(I18N.en, { 'pres.tab':'Presentations','pres.import':'Import HTML','pres.empty':'No presentations yet. Import an HTML slide deck.','pres.untitled':'Untitled deck','pres.titlePh':'Presentation title','pres.present':'Present','pres.delete':'Delete presentation','pres.deleteConfirm':'Delete this presentation?','pres.select':'Select a presentation, or import an HTML deck.','pres.tableMissing':'One-time setup: run supabase/presentations.sql in your Supabase SQL Editor to sync presentations to the cloud. (Cached locally meanwhile.)' });
+Object.assign(I18N['pt-BR'], { 'pres.tab':'Apresentações','pres.import':'Importar HTML','pres.empty':'Nenhuma apresentação ainda. Importe um slide em HTML.','pres.untitled':'Apresentação sem título','pres.titlePh':'Título da apresentação','pres.present':'Apresentar','pres.delete':'Excluir apresentação','pres.deleteConfirm':'Excluir esta apresentação?','pres.select':'Selecione uma apresentação ou importe um HTML.','pres.tableMissing':'Configuração única: rode supabase/presentations.sql no SQL Editor para sincronizar na nuvem. (Cache local enquanto isso.)' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -254,6 +259,7 @@ function loadFromCache() {
   const t = cacheGet('tasks');   tasks   = Array.isArray(t) ? t : [];
   tasks.forEach(x => { if (!Array.isArray(x.subtasks)) x.subtasks = []; if (x.group === undefined) x.group = ''; });
   const n = cacheGet('notes'); notes = Array.isArray(n) ? n : [];
+  const dks = cacheGet('presentations'); presentations = Array.isArray(dks) ? dks : [];
 }
 
 function getGroup(id) { return groups.find(g => g.id === id); }
@@ -274,7 +280,7 @@ function saveCollapsed() { localStorage.setItem(STORE_COLLAPSED, JSON.stringify(
 
 function loadView() {
   const v = localStorage.getItem(STORE_VIEW);
-  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes' || v === 'tickets' || v === 'analytics') currentView = v;
+  if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes' || v === 'tickets' || v === 'analytics' || v === 'slides') currentView = v;
 }
 function saveView() { localStorage.setItem(STORE_VIEW, currentView); }
 
@@ -570,12 +576,14 @@ function renderBoard() {
   document.body.classList.toggle('notes-active', currentView === 'notes');
   document.body.classList.toggle('tickets-active', currentView === 'tickets');
   document.body.classList.toggle('analytics-active', currentView === 'analytics');
+  document.body.classList.toggle('slides-active', currentView === 'slides');
   if      (currentView === 'kanban')   renderKanban(board);
   else if (currentView === 'table')    renderTable(board);
   else if (currentView === 'calendar') renderCalendar(board);
   else if (currentView === 'notes')    renderNotes(board);
   else if (currentView === 'tickets')  renderTickets(board);
   else if (currentView === 'analytics') renderAnalytics(board);
+  else if (currentView === 'slides')    renderPresentations(board);
   else                                 renderCards(board);
   renderOverview();
   renderGroupsList();
@@ -1875,6 +1883,17 @@ async function pullAll() {
     const cn = cacheGet('notes'); notes = Array.isArray(cn) ? cn : [];
     console.warn('[notes] table not ready yet:', e && e.message);
   }
+  try {
+    const dres = await sb.from('presentations').select('*').eq('user_id', USER_ID).order('position', { ascending: true });
+    if (dres.error) throw dres.error;
+    presentations = (dres.data || []).map(rowToDeck);
+    decksTableMissing = false;
+    cacheSet('presentations', presentations);
+  } catch (e) {
+    decksTableMissing = true;
+    const cd = cacheGet('presentations'); presentations = Array.isArray(cd) ? cd : [];
+    console.warn('[presentations] table not ready yet:', e && e.message);
+  }
 }
 
 // ---- Push (upsert current rows + delete the ones that disappeared) ----
@@ -1906,6 +1925,7 @@ async function flushCloudSave() {
       dirty.tasks = false;
     }
     if (dirty.notes)   { try { await pushTable('notes', notes.map(noteToRow), notes.map(n => n.id)); notesTableMissing = false; } catch (e) { notesTableMissing = true; console.warn('[notes] push failed:', e && e.message); } dirty.notes = false; }
+    if (dirty.presentations) { try { await pushTable('presentations', presentations.map(deckToRow), presentations.map(d => d.id)); decksTableMissing = false; } catch (e) { decksTableMissing = true; console.warn('[presentations] push failed:', e && e.message); } dirty.presentations = false; }
     lastPushAt = (window.performance ? performance.now() : Date.now());
     setSyncStatus('synced');
   } catch (e) {
@@ -1927,7 +1947,7 @@ function scheduleCloudSave(kind) {
 
 async function syncNow() {
   if (!sb || !USER_ID) return;
-  dirty.tasks = dirty.columns = dirty.groups = dirty.notes = true;
+  dirty.tasks = dirty.columns = dirty.groups = dirty.notes = dirty.presentations = true;
   await flushCloudSave();
 }
 
@@ -1941,6 +1961,7 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'columns', filter }, onRemoteChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'groups',  filter }, onRemoteChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'notes',   filter }, onRemoteChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'presentations', filter }, onRemoteChange)
     .subscribe();
 }
 function onRemoteChange() {
@@ -2400,6 +2421,78 @@ function renderAnalytics(board) {
       '<div class="an-mini"><span>📝 ' + escHtml(tr('an.lastEdited')) + ': <b>' + escHtml(lastNote) + '</b></span></div></div>' +
     ticketsSection +
   '</div>';
+}
+
+// ============================================================
+//  Presentations (imported HTML slide decks)
+// ============================================================
+function deckToRow(d, i) { return { id: d.id, user_id: USER_ID, title: d.title || '', html: d.html || '', position: i, created_at: new Date(d.created || Date.now()).toISOString() }; }
+function rowToDeck(r) { return { id: r.id, title: r.title || '', html: r.html || '', created: r.created_at ? new Date(r.created_at).getTime() : Date.now() }; }
+function saveDecks() { cacheSet('presentations', presentations); scheduleCloudSave('presentations'); }
+function deckTitleFromHtml(html, fallback) {
+  const m = (html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  let t = m ? stripHtml(m[1]).trim() : '';
+  if (!t) { const h1 = (html || '').match(/<h1[^>]*>([\s\S]*?)<\/h1>/i); t = h1 ? stripHtml(h1[1]).trim() : ''; }
+  return t || fallback || tr('pres.untitled');
+}
+function renderPresentations(board) {
+  if (activeDeckId && !presentations.find(d => d.id === activeDeckId)) activeDeckId = null;
+  if (!activeDeckId && presentations.length) activeDeckId = presentations[0].id;
+  const active = presentations.find(d => d.id === activeDeckId) || null;
+
+  const listHtml = presentations.length
+    ? presentations.map(d => '<button class="note-item' + (d.id === activeDeckId ? ' active' : '') + '" data-deck="' + escHtml(d.id) + '">' +
+        '<span class="note-item-title">' + escHtml(d.title || tr('pres.untitled')) + '</span>' +
+        '<span class="note-item-snippet">' + escHtml(new Date(d.created || Date.now()).toLocaleDateString(localeFor(), { day: 'numeric', month: 'short', year: 'numeric' })) + '</span>' +
+      '</button>').join('')
+    : '<div class="notes-empty">' + escHtml(tr('pres.empty')) + '</div>';
+  const banner = decksTableMissing ? '<div class="notes-banner">' + escHtml(tr('pres.tableMissing')) + '</div>' : '';
+
+  const mainHtml = active
+    ? '<div class="note-head"><input type="text" id="deck-title" class="note-title-input" value="' + escHtml(active.title) + '" placeholder="' + escHtml(tr('pres.titlePh')) + '">' +
+        '<div class="note-head-actions">' +
+          '<button class="btn-ghost" id="deck-present"><i data-lucide="maximize"></i> <span>' + escHtml(tr('pres.present')) + '</span></button>' +
+          '<button class="icon-btn" id="deck-del" title="' + escHtml(tr('pres.delete')) + '"><i data-lucide="trash-2"></i></button>' +
+        '</div></div>' +
+        '<div class="deck-frame-wrap"><iframe id="deck-frame" class="deck-frame" sandbox="allow-scripts allow-popups allow-modals allow-forms" referrerpolicy="no-referrer"></iframe></div>'
+    : '<div class="notes-select">' + escHtml(tr('pres.select')) + '</div>';
+
+  board.innerHTML = banner + '<div class="notes-wrap">' +
+      '<div class="notes-list">' +
+        '<label class="btn-primary notes-new-btn import-file-btn" style="text-align:center"><i data-lucide="upload"></i> ' + escHtml(tr('pres.import')) + '<input type="file" id="deck-import" accept=".html,.htm,text/html" hidden></label>' +
+        '<div class="notes-items">' + listHtml + '</div>' +
+      '</div>' +
+      '<div class="notes-main">' + mainHtml + '</div>' +
+    '</div>';
+
+  if (active) { const fr = document.getElementById('deck-frame'); if (fr) fr.srcdoc = active.html; }
+
+  const imp = document.getElementById('deck-import');
+  if (imp) imp.addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let html = '';
+    try { html = await f.text(); } catch (err) { alert('Could not read file.'); return; }
+    const d = { id: 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), title: deckTitleFromHtml(html, f.name.replace(/\.[^.]+$/, '')), html: html, created: Date.now() };
+    presentations.unshift(d); activeDeckId = d.id; saveDecks(); renderBoard();
+  });
+  board.querySelectorAll('[data-deck]').forEach(el => el.addEventListener('click', () => { activeDeckId = el.dataset.deck; renderBoard(); }));
+  const titleEl = document.getElementById('deck-title');
+  if (titleEl) titleEl.addEventListener('input', () => {
+    const d = presentations.find(x => x.id === activeDeckId); if (!d) return;
+    d.title = titleEl.value; saveDecks();
+    const lab = board.querySelector('.note-item.active .note-item-title'); if (lab) lab.textContent = d.title || tr('pres.untitled');
+  });
+  const delBtn = document.getElementById('deck-del');
+  if (delBtn) delBtn.addEventListener('click', () => {
+    if (!confirm(tr('pres.deleteConfirm'))) return;
+    presentations = presentations.filter(x => x.id !== activeDeckId); activeDeckId = null; saveDecks(); renderBoard();
+  });
+  const presentBtn = document.getElementById('deck-present');
+  if (presentBtn) presentBtn.addEventListener('click', () => {
+    const fr = document.getElementById('deck-frame');
+    if (fr && fr.requestFullscreen) fr.requestFullscreen().catch(() => {});
+    else if (fr && fr.webkitRequestFullscreen) fr.webkitRequestFullscreen();
+  });
 }
 
 // ============================================================

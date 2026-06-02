@@ -1206,3 +1206,15 @@ button svg.lucide, a svg.lucide { pointer-events: none; }
 .rich-hl-label { display: inline-flex; align-items: center; color: var(--text-light); }
 [data-theme="dark"] .rich-hl { border-color: rgba(255,255,255,0.18); }
 .rich-toolbar [data-fontstep] { font-weight: 700; }
+
+/* ===============================================
+   PRESENTATIONS
+   =============================================== */
+body.slides-active .subbar .search-input,
+body.slides-active .subbar .sort-label,
+body.slides-active .subbar .sort-select,
+body.slides-active .subbar .filter-btn-wrap,
+body.slides-active #groupby-btn { display: none; }
+.board.view-slides { display: block; }
+.deck-frame-wrap { flex: 1; min-height: 0; background: #fff; border-radius: 0 0 10px 10px; overflow: hidden; }
+.deck-frame { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
