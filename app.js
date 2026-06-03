@@ -2895,13 +2895,13 @@ function renderNotesGraph(board) {
   });
   graphZoom = 1; graphPanX = 0; graphPanY = 0; graphSelectedId = null;
   const controls = '<div class="graph-controls">' +
-    '<button class="icon-btn" data-gzoom="out" title="' + escHtml(tr('graph.zoomOut')) + '"><i data-lucide="minus"></i></button>' +
-    '<button class="icon-btn" data-gzoom="in" title="' + escHtml(tr('graph.zoomIn')) + '"><i data-lucide="plus"></i></button>' +
-    '<button class="icon-btn" data-gzoom="reset" title="' + escHtml(tr('graph.reset')) + '"><i data-lucide="maximize"></i></button>' +
-    '<span class="graph-ctl-sep"></span>' +
-    '<span class="graph-size" title="' + escHtml(tr('graph.nodeSize')) + '"><i data-lucide="circle"></i><input type="range" id="graph-size" min="0.5" max="2.5" step="0.1" value="' + graphNodeSize + '"></span>' +
-    '<span class="graph-ctl-sep"></span>' +
-    '<span class="graph-colors">' + GRAPH_COLORS.map(c => '<button class="graph-color-sw' + (c === graphNodeColor ? ' active' : '') + '" data-gcolor="' + c + '" style="background:' + c + '" title="' + escHtml(tr('graph.nodeColor')) + '"></button>').join('') + '</span>' +
+    '<span class="graph-ctl-group">' +
+      '<button class="icon-btn" data-gzoom="out" title="' + escHtml(tr('graph.zoomOut')) + '"><i data-lucide="minus"></i></button>' +
+      '<button class="icon-btn" data-gzoom="in" title="' + escHtml(tr('graph.zoomIn')) + '"><i data-lucide="plus"></i></button>' +
+      '<button class="icon-btn" data-gzoom="reset" title="' + escHtml(tr('graph.reset')) + '"><i data-lucide="maximize"></i></button>' +
+    '</span>' +
+    '<span class="graph-ctl-group graph-size" title="' + escHtml(tr('graph.nodeSize')) + '"><i data-lucide="circle"></i><input type="range" id="graph-size" min="0.5" max="2.5" step="0.1" value="' + graphNodeSize + '"></span>' +
+    '<span class="graph-ctl-group graph-colors">' + GRAPH_COLORS.map(c => '<button class="graph-color-sw' + (c === graphNodeColor ? ' active' : '') + '" data-gcolor="' + c + '" style="background:' + c + '" title="' + escHtml(tr('graph.nodeColor')) + '"></button>').join('') + '</span>' +
     '</div>';
   const linesSvg = edges.map(() => '<line class="graph-edge"/>').join('');
   const nodesSvg = nodes.map(n => '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '">' + gNodeInner(n) + '</g>').join('');

@@ -1338,7 +1338,7 @@ body.slides-active #groupby-btn { display: none; }
 .nlp-item { text-align: left; padding: 8px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--white); cursor: pointer; font-family: inherit; font-size: 13px; color: var(--text); }
 .nlp-item:hover { border-color: var(--purple); color: var(--purple); }
 /* graph */
-.graph-wrap { display: flex; flex-direction: column; height: 100%; min-height: 460px; }
+.graph-wrap { display: flex; flex-direction: column; height: 100%; min-height: 460px; padding: 16px; }
 .graph-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; row-gap: 8px; }
 .graph-title { font-weight: 700; color: var(--text-light); font-size: 13px; }
 .graph-svg { flex: 1; width: 100%; min-height: 0; background: var(--white); border: 1px solid var(--border); border-radius: 12px; cursor: grab; touch-action: none; }
@@ -1358,10 +1358,12 @@ body.slides-active #groupby-btn { display: none; }
 .gnp-shape.active { border-color: var(--purple); color: var(--purple); }
 .gnp-shape:hover { color: var(--purple); }
 .gnp-shape svg { display: block; }
-.graph-controls { display: flex; align-items: center; gap: 12px; margin-left: auto; flex-wrap: wrap; row-gap: 8px; padding-left: 6px; }
-.graph-controls .icon-btn { width: 30px; height: 30px; }
+.graph-controls { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; row-gap: 8px; }
+.graph-ctl-group { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 3px 8px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 9px; }
+.graph-controls .icon-btn { width: 28px; height: 28px; border: none; background: transparent; }
+.graph-controls .icon-btn:hover { background: var(--bg); }
 .graph-ctl-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
-.graph-size { display: inline-flex; align-items: center; gap: 8px; color: var(--text-light); }
+.graph-size { color: var(--text-light); }
 .graph-size svg.lucide { width: 15px; height: 15px; }
 .graph-size input[type="range"] { width: 92px; accent-color: var(--purple); }
 .graph-colors { display: inline-flex; gap: 7px; }
