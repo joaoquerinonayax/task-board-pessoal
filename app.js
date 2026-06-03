@@ -225,14 +225,14 @@ Object.assign(I18N.en, { 'pres.tab':'Presentations','pres.import':'Import HTML',
 Object.assign(I18N['pt-BR'], { 'pres.tab':'Apresentações','pres.import':'Importar HTML','pres.empty':'Nenhuma apresentação ainda. Importe um slide em HTML.','pres.untitled':'Apresentação sem título','pres.titlePh':'Título da apresentação','pres.present':'Apresentar','pres.delete':'Excluir apresentação','pres.deleteConfirm':'Excluir esta apresentação?','pres.select':'Selecione uma apresentação ou importe um HTML.','pres.tableMissing':'Configuração única: rode supabase/presentations.sql no SQL Editor para sincronizar na nuvem. (Cache local enquanto isso.)' });
 Object.assign(I18N.en, { 'pres.search':'Search presentations…','pres.newest':'Newest','pres.oldest':'Oldest','pres.az':'Title A–Z','pres.tagsPh':'Add tag…','pres.noResults':'No matches.' });
 Object.assign(I18N['pt-BR'], { 'pres.search':'Buscar apresentações…','pres.newest':'Mais recentes','pres.oldest':'Mais antigas','pres.az':'Título A–Z','pres.tagsPh':'Adicionar tag…','pres.noResults':'Nenhum resultado.' });
-Object.assign(I18N.en, { 'theme.light':'Light','theme.dark':'Dark','theme.midnight':'Midnight','theme.forest':'Forest','theme.ocean':'Ocean','theme.rose':'Rosé' });
-Object.assign(I18N['pt-BR'], { 'theme.light':'Claro','theme.dark':'Escuro','theme.midnight':'Meia-noite','theme.forest':'Floresta','theme.ocean':'Oceano','theme.rose':'Rosé' });
+Object.assign(I18N.en, { 'theme.light':'Light','theme.dim':'Dim','theme.dark':'Dark','theme.midnight':'Midnight','theme.forest':'Forest','theme.ocean':'Ocean','theme.rose':'Rosé' });
+Object.assign(I18N['pt-BR'], { 'theme.light':'Claro','theme.dim':'Suave','theme.dark':'Escuro','theme.midnight':'Meia-noite','theme.forest':'Floresta','theme.ocean':'Oceano','theme.rose':'Rosé' });
 Object.assign(I18N.en, { 'rt.table':'Table','table.insert':'Insert table','table.addRow':'Add row','table.addCol':'Add column','table.delRow':'Delete row','table.delCol':'Delete column','table.alignLeft':'Align left','table.alignCenter':'Align center','table.alignRight':'Align right' });
 Object.assign(I18N['pt-BR'], { 'rt.table':'Tabela','table.insert':'Inserir tabela','table.addRow':'Adicionar linha','table.addCol':'Adicionar coluna','table.delRow':'Excluir linha','table.delCol':'Excluir coluna','table.alignLeft':'Alinhar à esquerda','table.alignCenter':'Centralizar','table.alignRight':'Alinhar à direita' });
 Object.assign(I18N.en, { 'ins.btn':'Insert','ins.date':"Today's date",'ins.datetime':'Date & time','ins.tag':'Tag','ins.attr':'Attribute','ins.link':'Link to note…','ins.tagPrompt':'Tag name:','ins.attrPrompt':'Attribute name:','ins.linkTitle':'Link to a note','ins.linkPh':'Search notes…','exp.btn':'Export','exp.copy':'Copy to clipboard','exp.html':'Export as HTML','exp.pdf':'Export as PDF','exp.copied':'Copied!','exp.popup':'Allow pop-ups to export PDF.','graph.title':'Notes graph','graph.back':'Back to notes','graph.zoomIn':'Zoom in','graph.zoomOut':'Zoom out','graph.reset':'Reset view','graph.nodeSize':'Node size','graph.nodeColor':'Node color','graph.openNote':'Open note','graph.resetNode':'Reset','graph.smaller':'Smaller','graph.bigger':'Bigger' });
-Object.assign(I18N.en, { 'notes.search':'Search notes…','notes.sort.manual':'Manual order','notes.sort.title':'Title (A–Z)','notes.sort.newest':'Newest first','notes.sort.oldest':'Oldest first' });
+Object.assign(I18N.en, { 'notes.import':'Import Markdown','notes.search':'Search notes…','notes.sort.manual':'Manual order','notes.sort.title':'Title (A–Z)','notes.sort.newest':'Newest first','notes.sort.oldest':'Oldest first' });
 Object.assign(I18N['pt-BR'], { 'ins.btn':'Inserir','ins.date':'Data de hoje','ins.datetime':'Data e hora','ins.tag':'Tag','ins.attr':'Atributo','ins.link':'Linkar nota…','ins.tagPrompt':'Nome da tag:','ins.attrPrompt':'Nome do atributo:','ins.linkTitle':'Linkar a uma nota','ins.linkPh':'Buscar notas…','exp.btn':'Exportar','exp.copy':'Copiar para a área de transferência','exp.html':'Exportar como HTML','exp.pdf':'Exportar como PDF','exp.copied':'Copiado!','exp.popup':'Permita pop-ups para exportar o PDF.','graph.title':'Grafo de notas','graph.back':'Voltar às notas','graph.zoomIn':'Aproximar','graph.zoomOut':'Afastar','graph.reset':'Redefinir visão','graph.nodeSize':'Tamanho dos nodes','graph.nodeColor':'Cor dos nodes','graph.openNote':'Abrir nota','graph.resetNode':'Restaurar','graph.smaller':'Menor','graph.bigger':'Maior' });
-Object.assign(I18N['pt-BR'], { 'notes.search':'Buscar notas…','notes.sort.manual':'Ordem manual','notes.sort.title':'Título (A–Z)','notes.sort.newest':'Mais recentes','notes.sort.oldest':'Mais antigas' });
+Object.assign(I18N['pt-BR'], { 'notes.import':'Importar Markdown','notes.search':'Buscar notas…','notes.sort.manual':'Ordem manual','notes.sort.title':'Título (A–Z)','notes.sort.newest':'Mais recentes','notes.sort.oldest':'Mais antigas' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -642,20 +642,21 @@ function renderBoard() {
 function groupOrder() {
   return [...groups, { id: '', name: tr('group.none'), color: '#9aa0b0' }];
 }
-function groupHeaderHtml(g, count) {
-  const collapsed = collapsedGroups.has(g.id);
-  return `<div class="group-header${collapsed ? ' collapsed' : ''}" data-group="${escHtml(g.id)}" style="--gc:${escHtml(g.color)}">
+function groupHeaderHtml(g, count, key) {
+  const collapsed = collapsedGroups.has(key);
+  return `<div class="group-header${collapsed ? ' collapsed' : ''}" data-gkey="${escHtml(key)}" style="--gc:${escHtml(g.color)}">
       <span class="group-toggle">${collapsed ? '▸' : '▾'}</span>
       <span class="group-name">${escHtml(g.name)}</span>
       <span class="group-count">${count}</span>
     </div>`;
 }
-function renderGroupedCards(items, showColChip) {
+function renderGroupedCards(items, showColChip, keyPrefix) {
   return groupOrder().map(g => {
     const sect = items.filter(t => (t.group || '') === g.id);
     if (!sect.length) return '';
-    const cards = collapsedGroups.has(g.id) ? '' : sect.map(t => cardHtml(t, showColChip)).join('');
-    return `<div class="group-section">${groupHeaderHtml(g, sect.length)}${cards}</div>`;
+    const key = keyPrefix + ':' + g.id;
+    const cards = collapsedGroups.has(key) ? '' : sect.map(t => cardHtml(t, showColChip)).join('');
+    return `<div class="group-section">${groupHeaderHtml(g, sect.length, key)}${cards}</div>`;
   }).join('');
 }
 
@@ -670,7 +671,7 @@ function renderKanban(board) {
     const items = byCol[c.id] || [];
     let cards;
     if (!items.length) cards = '<div class="col-empty">' + escHtml(tr('col.empty')) + '</div>';
-    else if (groupBy)  cards = renderGroupedCards(items, false);
+    else if (groupBy)  cards = renderGroupedCards(items, false, 'k:' + c.id);
     else               cards = items.map(t => cardHtml(t, false)).join('');
     return `
       <section class="col" data-col="${escHtml(c.id)}">
@@ -705,8 +706,9 @@ function renderCards(board) {
     board.innerHTML = groupOrder().map(g => {
       const sect = list.filter(t => (t.group || '') === g.id);
       if (!sect.length) return '';
-      const grid = collapsedGroups.has(g.id) ? '' : `<div class="cards-grid">${sect.map(t => cardHtml(t, true)).join('')}</div>`;
-      return `<div class="group-section-wide">${groupHeaderHtml(g, sect.length)}${grid}</div>`;
+      const key = 'c:' + g.id;
+      const grid = collapsedGroups.has(key) ? '' : `<div class="cards-grid">${sect.map(t => cardHtml(t, true)).join('')}</div>`;
+      return `<div class="group-section-wide">${groupHeaderHtml(g, sect.length, key)}${grid}</div>`;
     }).join('');
   } else {
     board.innerHTML = list.map(t => cardHtml(t, true)).join('');
@@ -803,8 +805,9 @@ function renderTable(board) {
     bodyRows = groupOrder().map(g => {
       const sect = list.filter(t => (t.group || '') === g.id);
       if (!sect.length) return '';
-      const collapsed = collapsedGroups.has(g.id);
-      const head = `<tr class="group-row${collapsed ? ' collapsed' : ''}" data-group="${escHtml(g.id)}"><td colspan="6" style="--gc:${escHtml(g.color)}"><span class="group-toggle">${collapsed ? '▸' : '▾'}</span>${escHtml(g.name)} <span class="group-count">${sect.length}</span></td></tr>`;
+      const key = 't:' + g.id;
+      const collapsed = collapsedGroups.has(key);
+      const head = `<tr class="group-row${collapsed ? ' collapsed' : ''}" data-gkey="${escHtml(key)}"><td colspan="6" style="--gc:${escHtml(g.color)}"><span class="group-toggle">${collapsed ? '▸' : '▾'}</span>${escHtml(g.name)} <span class="group-count">${sect.length}</span></td></tr>`;
       const rows = collapsed ? '' : sect.map(t => tableRowHtml(t)).join('');
       return head + rows;
     }).join('');
@@ -1160,10 +1163,10 @@ function attachBoardDragHandlers() {
   board.addEventListener('click', e => {
     const gh = e.target.closest('.group-header, tr.group-row');
     if (!gh || !board.contains(gh)) return;
-    const gid = gh.getAttribute('data-group');
-    if (gid === null) return;
-    if (collapsedGroups.has(gid)) collapsedGroups.delete(gid);
-    else collapsedGroups.add(gid);
+    const gkey = gh.getAttribute('data-gkey');
+    if (gkey === null) return;
+    if (collapsedGroups.has(gkey)) collapsedGroups.delete(gkey);
+    else collapsedGroups.add(gkey);
     saveCollapsed();
     renderBoard();
   });
@@ -2097,6 +2100,23 @@ function extractTaskCandidates(md) {
   return out;
 }
 
+function importMarkdownFiles(fileList) {
+  const files = [...(fileList || [])];
+  if (!files.length) return;
+  let pending = files.length; const created = [];
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      const title = file.name.replace(/\.(md|markdown|txt)$/i, '').trim();
+      const n = { id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), title: title || tr('notes.untitled'), content: text, created: Date.now() };
+      notes.unshift(n); created.push(n.id);
+      if (--pending === 0) { saveNotes(); if (created.length) { activeNoteId = created[0]; notesGraph = false; } renderBoard(); }
+    };
+    reader.onerror = () => { if (--pending === 0) { saveNotes(); renderBoard(); } };
+    reader.readAsText(file);
+  });
+}
 function renderNotes(board) {
   if (notesGraph) { renderNotesGraph(board); return; }
   if (activeNoteId && !notes.find(n => n.id === activeNoteId)) activeNoteId = null;
@@ -2148,7 +2168,7 @@ function renderNotes(board) {
 
   board.innerHTML = `${banner}<div class="notes-wrap${noteFocus ? ' focus' : ''}">
       <div class="notes-list">
-        <div class="notes-list-head"><button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button><button class="btn-ghost notes-graph-btn" id="notes-graph-btn" title="${escHtml(tr('graph.title'))}"><i data-lucide="workflow"></i></button></div>
+        <div class="notes-list-head"><button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button><label class="btn-ghost notes-graph-btn" id="notes-import-btn" title="${escHtml(tr('notes.import'))}"><i data-lucide="upload"></i><input type="file" id="notes-import-input" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden></label><button class="btn-ghost notes-graph-btn" id="notes-graph-btn" title="${escHtml(tr('graph.title'))}"><i data-lucide="workflow"></i></button></div>
         <div class="notes-toolbar"><div class="notes-search-wrap"><i data-lucide="search"></i><input type="text" id="notes-search" class="notes-search" placeholder="${escHtml(tr('notes.search'))}" value="${escHtml(notesSearch)}"></div><select id="notes-sort" class="notes-sort">${['manual', 'title', 'newest', 'oldest'].map(o => `<option value="${o}"${notesSort === o ? ' selected' : ''}>${escHtml(tr('notes.sort.' + o))}</option>`).join('')}</select></div>
         <div class="notes-items">${listHtml}</div>
       </div>
@@ -2232,6 +2252,7 @@ function renderNotes(board) {
   board.querySelectorAll('[data-ins]').forEach(b => b.addEventListener('click', () => { board.querySelectorAll('[data-note-dropdown]').forEach(x => x.hidden = true); insertToken(b.dataset.ins); }));
   board.querySelectorAll('[data-exp]').forEach(b => b.addEventListener('click', () => { board.querySelectorAll('[data-note-dropdown]').forEach(x => x.hidden = true); exportNote(b.dataset.exp); }));
   const graphBtn = document.getElementById('notes-graph-btn'); if (graphBtn) graphBtn.addEventListener('click', () => { notesGraph = true; renderBoard(); });
+  const importInput = document.getElementById('notes-import-input'); if (importInput) importInput.addEventListener('change', e => { importMarkdownFiles(e.target.files); e.target.value = ''; });
   if (!window.__noteMenuBound) { window.__noteMenuBound = true; document.addEventListener('click', e => { if (!e.target.closest('.note-menu-wrap')) document.querySelectorAll('[data-note-dropdown]').forEach(m => m.hidden = true); }); }
   const delBtn = document.getElementById('note-del');
   if (delBtn) delBtn.addEventListener('click', () => {
@@ -2879,6 +2900,7 @@ function renderNotesGraph(board) {
     '<button class="icon-btn" data-gzoom="reset" title="' + escHtml(tr('graph.reset')) + '"><i data-lucide="maximize"></i></button>' +
     '<span class="graph-ctl-sep"></span>' +
     '<span class="graph-size" title="' + escHtml(tr('graph.nodeSize')) + '"><i data-lucide="circle"></i><input type="range" id="graph-size" min="0.5" max="2.5" step="0.1" value="' + graphNodeSize + '"></span>' +
+    '<span class="graph-ctl-sep"></span>' +
     '<span class="graph-colors">' + GRAPH_COLORS.map(c => '<button class="graph-color-sw' + (c === graphNodeColor ? ' active' : '') + '" data-gcolor="' + c + '" style="background:' + c + '" title="' + escHtml(tr('graph.nodeColor')) + '"></button>').join('') + '</span>' +
     '</div>';
   const linesSvg = edges.map(() => '<line class="graph-edge"/>').join('');
@@ -3056,6 +3078,7 @@ function readAvatarFile(file, cb) {
 const STORE_THEME = 'tb_theme';
 const THEMES = [
   { id: 'light',    dark: false, bg: '#f6f7fb', accent: '#6161ff' },
+  { id: 'dim',      dark: false, bg: '#dcdfe6', accent: '#5d5dea' },
   { id: 'dark',     dark: true,  bg: '#15171f', accent: '#7b7bff' },
   { id: 'midnight', dark: true,  bg: '#0f1226', accent: '#8b9cff' },
   { id: 'forest',   dark: true,  bg: '#0e1a15', accent: '#3fbf86' },
