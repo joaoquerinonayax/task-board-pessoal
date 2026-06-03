@@ -1283,3 +1283,43 @@ body.slides-active #groupby-btn { display: none; }
 .theme-swatch > span { width: 7px; height: 7px; border-radius: 50%; display: block; }
 .theme-check { margin-left: auto; color: var(--purple); display: inline-flex; }
 .theme-check svg.lucide { width: 14px; height: 14px; }
+
+/* ===============================================
+   NOTES — tables + table menu
+   =============================================== */
+.rich-editor table, .md-body table, .note-preview table { border-collapse: collapse; margin: 0.6em 0; width: auto; max-width: 100%; }
+.rich-editor th, .rich-editor td, .md-body th, .md-body td, .note-preview th, .note-preview td { border: 1px solid var(--border); padding: 5px 9px; min-width: 44px; vertical-align: top; }
+.rich-editor th, .md-body th, .note-preview th { background: var(--card-bg); font-weight: 700; }
+.note-mode-rich #note-rich, .note-preview { overflow-x: auto; }
+.rich-tablewrap { position: relative; display: inline-flex; }
+.rich-table-menu { position: absolute; top: calc(100% + 4px); right: 0; left: auto; z-index: 70; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); padding: 5px; min-width: 174px; }
+.rich-table-menu[hidden] { display: none; }
+.rich-table-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; background: transparent; text-align: left; cursor: pointer; font-family: inherit; font-size: 13px; border-radius: 5px; color: var(--text); }
+.rich-table-menu button:hover { background: var(--bg); color: var(--purple); }
+.rich-table-menu svg.lucide { width: 14px; height: 14px; }
+
+/* ===============================================
+   NOTES — wiki links, graph, insert/export menus
+   =============================================== */
+.notes-list-head { display: flex; gap: 8px; margin-bottom: 8px; }
+.notes-list-head .notes-new-btn { flex: 1; margin-bottom: 0; }
+.notes-graph-btn { flex-shrink: 0; padding: 8px 11px; }
+.note-menu-wrap { display: inline-flex; position: relative; }
+.note-menu-wrap .dropdown-menu { right: auto; left: 0; }
+.note-link { color: var(--purple); cursor: pointer; border-bottom: 1px dashed var(--purple-soft); text-decoration: none; }
+.note-link:hover { border-bottom-style: solid; }
+.nlp-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.nlp-item { text-align: left; padding: 8px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--white); cursor: pointer; font-family: inherit; font-size: 13px; color: var(--text); }
+.nlp-item:hover { border-color: var(--purple); color: var(--purple); }
+/* graph */
+.graph-wrap { display: flex; flex-direction: column; height: 100%; min-height: 460px; }
+.graph-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.graph-title { font-weight: 700; color: var(--text-light); font-size: 13px; }
+.graph-svg { flex: 1; width: 100%; min-height: 0; background: var(--white); border: 1px solid var(--border); border-radius: 12px; }
+.graph-edge { stroke: var(--border); stroke-width: 1.5; }
+.graph-node circle { fill: var(--purple); cursor: pointer; transition: fill .12s, r .12s; }
+.graph-node:hover circle { fill: var(--purple-hover); }
+.graph-node text { fill: var(--text-light); font-size: 11px; text-anchor: middle; font-family: inherit; pointer-events: none; }
+/* toast */
+.tb-toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: var(--white); padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; z-index: 400; opacity: 0; transition: opacity .2s, transform .2s; box-shadow: 0 8px 28px rgba(0,0,0,0.22); pointer-events: none; }
+.tb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

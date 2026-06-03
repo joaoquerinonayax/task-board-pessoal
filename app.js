@@ -47,6 +47,8 @@ let columnDragId = null;         // id of column being dragged
 // Notes
 let notes = [];
 let activeNoteId = null;
+let notesGraph = false;
+let noteCaret = null;
 let notesTableMissing = false;
 let presentations = [];
 let activeDeckId = null;
@@ -70,7 +72,7 @@ let hiddenCols = new Set((function(){ try { return JSON.parse(localStorage.getIt
 let _td = null;
 function getTurndown() {
   if (_td) return _td;
-  if (window.TurndownService) { try { _td = new window.TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced', emDelimiter: '*' }); if (_td.keep) _td.keep(['span', 'font', 'u', 'mark']); } catch (e) { _td = null; } }
+  if (window.TurndownService) { try { _td = new window.TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced', emDelimiter: '*' }); if (_td.keep) _td.keep(['span', 'font', 'u', 'mark']); if (window.turndownPluginGfm && _td.use) _td.use(window.turndownPluginGfm.gfm); if (_td.addRule) _td.addRule('notelink', { filter: function(node){ return node.nodeName === 'A' && node.getAttribute && node.getAttribute('data-note-link'); }, replacement: function(content, node){ const t = node.getAttribute('data-note-link'); const lbl = (content || '').trim(); return '[[' + t + (lbl && lbl !== t ? '|' + lbl : '') + ']]'; } }); if (_td.addRule) _td.addRule('tableCellBr', { filter: function(node){ return node.nodeName === 'BR' && node.parentNode && (node.parentNode.nodeName === 'TD' || node.parentNode.nodeName === 'TH'); }, replacement: function(){ return ' '; } }); } catch (e) { _td = null; } }
   return _td;
 }
 function saveNotePrefs() { try { localStorage.setItem('tb_note_mode', noteMode); localStorage.setItem('tb_note_focus', noteFocus ? '1' : '0'); } catch (e) {} }
@@ -209,6 +211,10 @@ Object.assign(I18N.en, { 'pres.search':'Search presentations…','pres.newest':'
 Object.assign(I18N['pt-BR'], { 'pres.search':'Buscar apresentações…','pres.newest':'Mais recentes','pres.oldest':'Mais antigas','pres.az':'Título A–Z','pres.tagsPh':'Adicionar tag…','pres.noResults':'Nenhum resultado.' });
 Object.assign(I18N.en, { 'theme.light':'Light','theme.dark':'Dark','theme.midnight':'Midnight','theme.forest':'Forest','theme.ocean':'Ocean','theme.rose':'Rosé' });
 Object.assign(I18N['pt-BR'], { 'theme.light':'Claro','theme.dark':'Escuro','theme.midnight':'Meia-noite','theme.forest':'Floresta','theme.ocean':'Oceano','theme.rose':'Rosé' });
+Object.assign(I18N.en, { 'rt.table':'Table','table.insert':'Insert table','table.addRow':'Add row','table.addCol':'Add column','table.delRow':'Delete row','table.delCol':'Delete column','table.alignLeft':'Align left','table.alignCenter':'Align center','table.alignRight':'Align right' });
+Object.assign(I18N['pt-BR'], { 'rt.table':'Tabela','table.insert':'Inserir tabela','table.addRow':'Adicionar linha','table.addCol':'Adicionar coluna','table.delRow':'Excluir linha','table.delCol':'Excluir coluna','table.alignLeft':'Alinhar à esquerda','table.alignCenter':'Centralizar','table.alignRight':'Alinhar à direita' });
+Object.assign(I18N.en, { 'ins.btn':'Insert','ins.date':"Today's date",'ins.datetime':'Date & time','ins.tag':'Tag','ins.attr':'Attribute','ins.link':'Link to note…','ins.tagPrompt':'Tag name:','ins.attrPrompt':'Attribute name:','ins.linkTitle':'Link to a note','ins.linkPh':'Search notes…','exp.btn':'Export','exp.copy':'Copy to clipboard','exp.html':'Export as HTML','exp.pdf':'Export as PDF','exp.copied':'Copied!','exp.popup':'Allow pop-ups to export PDF.','graph.title':'Notes graph','graph.back':'Back to notes' });
+Object.assign(I18N['pt-BR'], { 'ins.btn':'Inserir','ins.date':'Data de hoje','ins.datetime':'Data e hora','ins.tag':'Tag','ins.attr':'Atributo','ins.link':'Linkar nota…','ins.tagPrompt':'Nome da tag:','ins.attrPrompt':'Nome do atributo:','ins.linkTitle':'Linkar a uma nota','ins.linkPh':'Buscar notas…','exp.btn':'Exportar','exp.copy':'Copiar para a área de transferência','exp.html':'Exportar como HTML','exp.pdf':'Exportar como PDF','exp.copied':'Copiado!','exp.popup':'Permita pop-ups para exportar o PDF.','graph.title':'Grafo de notas','graph.back':'Voltar às notas' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -349,12 +355,20 @@ function sanitizeHtml(html) {
           const color = child.style.color;
           const bg = child.style.backgroundColor;
           const fs = child.style.fontSize;
+          const ta = child.style.textAlign;
           child.removeAttribute('style');
           if (color) child.style.color = color;
           if (bg) child.style.backgroundColor = bg;
           if (fs) child.style.fontSize = fs;
+          if (ta) child.style.textAlign = ta;
         } else if (n === 'color' && child.tagName === 'FONT') {
           // keep font color
+        } else if (n === 'data-note-link') {
+          // keep wiki-link target
+        } else if (n === 'class' && /(^|\s)note-link(\s|$)/.test(attr.value)) {
+          // keep note-link class
+        } else if (n === 'align' && (child.tagName === 'TD' || child.tagName === 'TH')) {
+          // keep cell alignment (round-trips to GFM :--:)
         } else if (n === 'href' && child.tagName === 'A') {
           if (/^\s*(javascript|data):/i.test(attr.value)) child.removeAttribute('href');
           else { child.setAttribute('rel', 'noopener'); child.setAttribute('target', '_blank'); }
@@ -362,6 +376,7 @@ function sanitizeHtml(html) {
           child.removeAttribute(attr.name);
         }
       });
+      if ((child.tagName === 'TD' || child.tagName === 'TH') && child.style && child.style.textAlign) child.setAttribute('align', child.style.textAlign);
       clean(child);
       i++;
     }
@@ -388,6 +403,7 @@ function setupRichEditor(editor, toolbar) {
   toolbar.addEventListener('mousedown', e => {
     if (e.target.closest('button, .rich-color, .rich-hl')) e.preventDefault();
   });
+  editor.addEventListener('mousedown', () => { const m = toolbar.querySelector('.rich-table-menu'); if (m) m.hidden = true; });
   toolbar.addEventListener('click', e => {
     const colorEl = e.target.closest('.rich-color');
     if (colorEl) {
@@ -405,6 +421,8 @@ function setupRichEditor(editor, toolbar) {
     }
     const btn = e.target.closest('button');
     if (!btn) return;
+    if (btn.dataset.tabletoggle) { const m = toolbar.querySelector('.rich-table-menu'); if (m) m.hidden = !m.hidden; return; }
+    if (btn.dataset.tableop) { editor.focus(); tableOp(editor, btn.dataset.tableop); const m = toolbar.querySelector('.rich-table-menu'); if (m) m.hidden = true; return; }
     editor.focus();
     if (btn.dataset.fontstep) {
       fontLevel = Math.max(1, Math.min(7, fontLevel + parseInt(btn.dataset.fontstep)));
@@ -466,6 +484,8 @@ function richEditorMarkup(id) {
       <span class="rich-hl" data-hl="#ffc9de" style="background:#ffc9de" title="${escHtml(tr('rt.highlight'))}"></span>
       <span class="rich-hl" data-hl="#bfe0ff" style="background:#bfe0ff" title="${escHtml(tr('rt.highlight'))}"></span>
       <span class="rich-hl rich-hl-clear" data-hl="transparent" title="${escHtml(tr('rt.clearHl'))}">⌀</span>
+      <span class="rich-sep"></span>
+      <span class="rich-tablewrap"><button type="button" data-tabletoggle="1" title="${escHtml(tr('rt.table'))}"><i data-lucide="table"></i></button><div class="rich-table-menu" hidden><button type="button" data-tableop="insert"><i data-lucide="table"></i>${escHtml(tr('table.insert'))}</button><button type="button" data-tableop="addRow"><i data-lucide="plus"></i>${escHtml(tr('table.addRow'))}</button><button type="button" data-tableop="addCol"><i data-lucide="plus"></i>${escHtml(tr('table.addCol'))}</button><button type="button" data-tableop="delRow"><i data-lucide="minus"></i>${escHtml(tr('table.delRow'))}</button><button type="button" data-tableop="delCol"><i data-lucide="minus"></i>${escHtml(tr('table.delCol'))}</button><button type="button" data-tableop="alignLeft"><i data-lucide="align-left"></i>${escHtml(tr('table.alignLeft'))}</button><button type="button" data-tableop="alignCenter"><i data-lucide="align-center"></i>${escHtml(tr('table.alignCenter'))}</button><button type="button" data-tableop="alignRight"><i data-lucide="align-right"></i>${escHtml(tr('table.alignRight'))}</button></div></span>
       <span class="rich-sep"></span>
       <button type="button" data-link="1" title="${escHtml(tr('rt.link'))}"><i data-lucide="link"></i></button>
       <button type="button" data-cmd="removeFormat" title="${escHtml(tr('rt.clear'))}"><i data-lucide="eraser"></i></button>
@@ -2040,6 +2060,7 @@ function stripInlineMd(s) {
 }
 function renderMarkdown(md) {
   if (!md || !md.trim()) return '<div class="notes-preview-empty">' + escHtml(tr('notes.contentPh')) + '</div>';
+  md = preprocessWiki(md);
   let html = null;
   if (window.marked && window.marked.parse) {
     try { html = window.marked.parse(md, { breaks: true, gfm: true }); } catch (e) { html = null; }
@@ -2059,6 +2080,7 @@ function extractTaskCandidates(md) {
 }
 
 function renderNotes(board) {
+  if (notesGraph) { renderNotesGraph(board); return; }
   if (activeNoteId && !notes.find(n => n.id === activeNoteId)) activeNoteId = null;
   if (!activeNoteId && notes.length) activeNoteId = notes[0].id;
   const active = notes.find(n => n.id === activeNoteId) || null;
@@ -2091,6 +2113,8 @@ function renderNotes(board) {
          <div class="note-head-actions">
            <div class="note-modes">${modeBtn('split', tr('notes.split'))}${modeBtn('md', tr('notes.md'))}${modeBtn('rich', tr('notes.rich'))}</div>
            <button class="icon-btn" id="note-focus" title="${escHtml(noteFocus ? tr('notes.exitFocus') : tr('notes.focus'))}">${noteFocus ? '<i data-lucide="minimize-2"></i>' : '<i data-lucide="maximize-2"></i>'}</button>
+           <div class="dropdown note-menu-wrap"><button class="btn-ghost" type="button" data-note-menu="insert"><i data-lucide="plus-circle"></i> <span>${escHtml(tr('ins.btn'))}</span></button><div class="dropdown-menu" data-note-dropdown="insert" hidden><button class="dropdown-item" data-ins="date"><i data-lucide="calendar"></i>${escHtml(tr('ins.date'))}</button><button class="dropdown-item" data-ins="datetime"><i data-lucide="clock"></i>${escHtml(tr('ins.datetime'))}</button><button class="dropdown-item" data-ins="tag"><i data-lucide="hash"></i>${escHtml(tr('ins.tag'))}</button><button class="dropdown-item" data-ins="attr"><i data-lucide="text"></i>${escHtml(tr('ins.attr'))}</button><button class="dropdown-item" data-ins="link"><i data-lucide="link-2"></i>${escHtml(tr('ins.link'))}</button></div></div>
+           <div class="dropdown note-menu-wrap"><button class="btn-ghost" type="button" data-note-menu="export"><i data-lucide="download"></i> <span>${escHtml(tr('exp.btn'))}</span></button><div class="dropdown-menu" data-note-dropdown="export" hidden><button class="dropdown-item" data-exp="copy"><i data-lucide="clipboard"></i>${escHtml(tr('exp.copy'))}</button><button class="dropdown-item" data-exp="html"><i data-lucide="file-code-2"></i>${escHtml(tr('exp.html'))}</button><button class="dropdown-item" data-exp="pdf"><i data-lucide="printer"></i>${escHtml(tr('exp.pdf'))}</button></div></div>
            <button class="btn-ghost" id="note-gen">${escHtml(tr('notes.gen'))}</button>
            <button class="icon-btn" id="note-del" title="${escHtml(tr('notes.delete'))}"><i data-lucide="trash-2"></i></button>
          </div>
@@ -2100,7 +2124,7 @@ function renderNotes(board) {
 
   board.innerHTML = `${banner}<div class="notes-wrap${noteFocus ? ' focus' : ''}">
       <div class="notes-list">
-        <button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button>
+        <div class="notes-list-head"><button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button><button class="btn-ghost notes-graph-btn" id="notes-graph-btn" title="${escHtml(tr('graph.title'))}"><i data-lucide="workflow"></i></button></div>
         <div class="notes-items">${listHtml}</div>
       </div>
       <div class="notes-main">${mainHtml}</div>
@@ -2138,6 +2162,8 @@ function renderNotes(board) {
         n.content = td ? td.turndown(sanitizeHtml(editor.innerHTML)) : (editor.innerText || '');
         saveNotes();
       });
+      bindNoteLinks(editor);
+      ['keyup', 'mouseup', 'blur'].forEach(ev => editor.addEventListener(ev, () => { const sel = window.getSelection(); if (sel.rangeCount) { const r = sel.getRangeAt(0); if (editor.contains(r.commonAncestorContainer)) noteCaret = r.cloneRange(); } }));
     }
   } else if (active) {
     const contentEl = document.getElementById('note-content');
@@ -2148,8 +2174,14 @@ function renderNotes(board) {
       if (previewEl) previewEl.innerHTML = renderMarkdown(n.content);
       saveNotes();
     });
+    if (previewEl) bindNoteLinks(previewEl);
   }
 
+  board.querySelectorAll('[data-note-menu]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); const which = btn.dataset.noteMenu; const m = board.querySelector('[data-note-dropdown="' + which + '"]'); const wasHidden = m && m.hidden; board.querySelectorAll('[data-note-dropdown]').forEach(x => x.hidden = true); if (m) m.hidden = !wasHidden; }));
+  board.querySelectorAll('[data-ins]').forEach(b => b.addEventListener('click', () => { board.querySelectorAll('[data-note-dropdown]').forEach(x => x.hidden = true); insertToken(b.dataset.ins); }));
+  board.querySelectorAll('[data-exp]').forEach(b => b.addEventListener('click', () => { board.querySelectorAll('[data-note-dropdown]').forEach(x => x.hidden = true); exportNote(b.dataset.exp); }));
+  const graphBtn = document.getElementById('notes-graph-btn'); if (graphBtn) graphBtn.addEventListener('click', () => { notesGraph = true; renderBoard(); });
+  if (!window.__noteMenuBound) { window.__noteMenuBound = true; document.addEventListener('click', e => { if (!e.target.closest('.note-menu-wrap')) document.querySelectorAll('[data-note-dropdown]').forEach(m => m.hidden = true); }); }
   const delBtn = document.getElementById('note-del');
   if (delBtn) delBtn.addEventListener('click', () => {
     if (!confirm(tr('notes.deleteConfirm'))) return;
@@ -2572,6 +2604,204 @@ function renderPresentations(board) {
     if (fr && fr.requestFullscreen) fr.requestFullscreen().catch(() => {});
     else if (fr && fr.webkitRequestFullscreen) fr.webkitRequestFullscreen();
   });
+  refreshIcons();
+}
+
+// ============================================================
+//  Notes — Markdown table editing (rich mode)
+// ============================================================
+function tableCurrentCell(editor) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  let node = sel.getRangeAt(0).startContainer;
+  while (node && node !== editor) { if (node.nodeType === 1 && (node.tagName === 'TD' || node.tagName === 'TH')) return node; node = node.parentNode; }
+  return null;
+}
+function tableColIndex(cell) { let i = 0, n = cell; while ((n = n.previousElementSibling)) i++; return i; }
+function tableOf(cell) { let n = cell; while (n && n.tagName !== 'TABLE') n = n.parentNode; return n; }
+function tableNewCell(tag) { const c = document.createElement(tag); c.innerHTML = '<br>'; return c; }
+function tableInsert() {
+  const html = '<table><thead><tr><th>Col 1</th><th>Col 2</th><th>Col 3</th></tr></thead><tbody>' +
+    '<tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>';
+  document.execCommand('insertHTML', false, html);
+}
+function tableOp(editor, op) {
+  if (op === 'insert') { tableInsert(); editor.dispatchEvent(new Event('input', { bubbles: true })); return; }
+  const cell = tableCurrentCell(editor); if (!cell) return;
+  const table = tableOf(cell); if (!table) return;
+  const row = cell.parentNode, idx = tableColIndex(cell), allRows = [...table.querySelectorAll('tr')];
+  if (op === 'addRow') {
+    const cols = (table.tHead && table.tHead.rows[0]) ? table.tHead.rows[0].cells.length : row.cells.length;
+    const tr = document.createElement('tr');
+    for (let k = 0; k < cols; k++) tr.appendChild(tableNewCell('td'));
+    if (cell.tagName === 'TH' && table.tBodies[0]) table.tBodies[0].insertBefore(tr, table.tBodies[0].firstChild);
+    else row.parentNode.insertBefore(tr, row.nextSibling);
+  } else if (op === 'addCol') {
+    allRows.forEach(r => { const ref = r.cells[idx]; const tag = (r.parentNode && r.parentNode.tagName === 'THEAD') ? 'th' : 'td'; r.insertBefore(tableNewCell(tag), ref ? ref.nextSibling : null); });
+  } else if (op === 'delRow') {
+    if (cell.tagName === 'TH') return;
+    if (table.tBodies[0] && table.tBodies[0].rows.length <= 1) return;
+    row.parentNode.removeChild(row);
+  } else if (op === 'delCol') {
+    if (allRows[0] && allRows[0].cells.length <= 1) return;
+    allRows.forEach(r => { if (r.cells[idx]) r.removeChild(r.cells[idx]); });
+  } else if (op === 'alignLeft' || op === 'alignCenter' || op === 'alignRight') {
+    const dir = op === 'alignLeft' ? 'left' : (op === 'alignCenter' ? 'center' : 'right');
+    allRows.forEach(r => { if (r.cells[idx]) r.cells[idx].style.textAlign = dir; });
+  }
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// ============================================================
+//  Notes — wiki links, graph, insert tokens, export
+// ============================================================
+function preprocessWiki(md) {
+  return String(md).replace(/\[\[([^\]|\n]+?)(?:\|([^\]\n]+?))?\]\]/g, function (m, t, alias) {
+    const title = t.trim(); const label = (alias || t).trim();
+    return '<a class="note-link" data-note-link="' + escHtml(title) + '">' + escHtml(label) + '</a>';
+  });
+}
+function openNoteByTitle(title) {
+  const t = String(title || '').trim().toLowerCase();
+  let n = notes.find(x => (x.title || '').trim().toLowerCase() === t);
+  if (!n) { n = { id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), title: String(title).trim(), content: '', created: Date.now() }; notes.unshift(n); saveNotes(); }
+  activeNoteId = n.id; notesGraph = false; currentView = 'notes';
+  renderBoard();
+}
+function bindNoteLinks(root) {
+  if (!root) return;
+  root.addEventListener('click', function (e) { const a = e.target.closest('[data-note-link]'); if (a) { e.preventDefault(); openNoteByTitle(a.getAttribute('data-note-link')); } });
+}
+function noteInsertText(text) {
+  if (noteMode === 'rich') {
+    const editor = document.getElementById('note-rich'); if (!editor) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (noteCaret && editor.contains(noteCaret.commonAncestorContainer)) { sel.removeAllRanges(); sel.addRange(noteCaret); }
+    document.execCommand('insertText', false, text);
+    if (sel.rangeCount) noteCaret = sel.getRangeAt(0).cloneRange();
+  } else {
+    const el = document.getElementById('note-content'); if (!el) return;
+    const sS = el.selectionStart != null ? el.selectionStart : el.value.length;
+    const sE = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    el.setRangeText(text, sS, sE, 'end'); el.focus();
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+function noteInsertWiki(title) {
+  if (noteMode === 'rich') {
+    const editor = document.getElementById('note-rich'); if (!editor) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (noteCaret && editor.contains(noteCaret.commonAncestorContainer)) { sel.removeAllRanges(); sel.addRange(noteCaret); }
+    document.execCommand('insertHTML', false, '<a class="note-link" data-note-link="' + escHtml(title) + '">' + escHtml(title) + '</a>&nbsp;');
+    if (sel.rangeCount) noteCaret = sel.getRangeAt(0).cloneRange();
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+  } else {
+    noteInsertText('[[' + title + ']]');
+  }
+}
+function insertToken(kind) {
+  const d = new Date();
+  if (kind === 'date') noteInsertText(d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()));
+  else if (kind === 'datetime') noteInsertText(d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()));
+  else if (kind === 'tag') { const t = prompt(tr('ins.tagPrompt')); if (t && t.trim()) noteInsertText('#' + t.trim().replace(/\s+/g, '-')); }
+  else if (kind === 'attr') { const k = prompt(tr('ins.attrPrompt')); if (k && k.trim()) noteInsertText(k.trim() + ':: '); }
+  else if (kind === 'link') openNoteLinkPicker();
+}
+function openNoteLinkPicker() {
+  const others = notes.filter(n => n.id !== activeNoteId);
+  const backdrop = document.createElement('div'); backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = '<div class="modal" role="dialog" aria-modal="true"><h2>' + escHtml(tr('ins.linkTitle')) + '</h2>' +
+    '<input type="text" id="nlp-search" class="search-input" style="width:100%;max-width:none;margin-bottom:10px" placeholder="' + escHtml(tr('ins.linkPh')) + '">' +
+    '<div class="nlp-list" id="nlp-list"></div>' +
+    '<div class="modal-actions"><button type="button" class="btn-secondary" id="nlp-cancel">' + escHtml(tr('m.cancel')) + '</button></div></div>';
+  document.body.appendChild(backdrop);
+  function close() { if (backdrop.parentNode) document.body.removeChild(backdrop); document.removeEventListener('keydown', onKey); }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.getElementById('nlp-cancel').addEventListener('click', close);
+  function renderList(q) {
+    const ql = (q || '').toLowerCase();
+    const list = others.filter(n => (n.title || tr('notes.untitled')).toLowerCase().includes(ql));
+    document.getElementById('nlp-list').innerHTML = list.length
+      ? list.map(n => '<button class="nlp-item" data-nlp="' + escHtml(n.title || '') + '">' + escHtml(n.title || tr('notes.untitled')) + '</button>').join('')
+      : '<div class="notes-empty">' + escHtml(tr('pres.noResults')) + '</div>';
+    document.querySelectorAll('[data-nlp]').forEach(b => b.addEventListener('click', () => { const ttl = b.dataset.nlp; close(); noteInsertWiki(ttl); }));
+  }
+  document.getElementById('nlp-search').addEventListener('input', e => renderList(e.target.value));
+  renderList(''); document.getElementById('nlp-search').focus();
+}
+function noteStandaloneHtml(note) {
+  const body = renderMarkdown(note.content);
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + escHtml(note.title || 'note') + '</title>' +
+    '<style>body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 22px;color:#222;line-height:1.65}' +
+    'h1,h2,h3,h4{line-height:1.25}table{border-collapse:collapse;margin:.6em 0}th,td{border:1px solid #ccc;padding:6px 10px}th{background:#f4f4f6}' +
+    'code{background:#f3f3f5;padding:1px 5px;border-radius:4px}pre{background:#f3f3f5;padding:12px;border-radius:8px;overflow:auto}' +
+    'blockquote{border-left:3px solid #ddd;margin:.6em 0;padding:.2em 0 .2em 12px;color:#666}a{color:#6161ff}.note-link{color:#6161ff}img{max-width:100%}</style></head><body>' +
+    '<h1>' + escHtml(note.title || 'Untitled') + '</h1>' + body + '</body></html>';
+}
+function toastNote(msg) {
+  const el = document.createElement('div'); el.className = 'tb-toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 220); }, 1700);
+}
+function exportNote(kind) {
+  const note = notes.find(n => n.id === activeNoteId); if (!note) return;
+  if (kind === 'html') {
+    const name = (note.title || 'note').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'note';
+    download(name + '.html', noteStandaloneHtml(note), 'text/html;charset=utf-8');
+  } else if (kind === 'pdf') {
+    const w = window.open('', '_blank');
+    if (!w) { alert(tr('exp.popup')); return; }
+    w.document.write(noteStandaloneHtml(note)); w.document.close(); w.focus();
+    setTimeout(() => { try { w.print(); } catch (e) {} }, 400);
+  } else if (kind === 'copy') {
+    const md = note.content || '';
+    const html = renderMarkdown(note.content);
+    if (navigator.clipboard && window.ClipboardItem) {
+      try {
+        navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([md], { type: 'text/plain' }) })])
+          .then(() => toastNote(tr('exp.copied'))).catch(() => navigator.clipboard.writeText(md).then(() => toastNote(tr('exp.copied'))));
+      } catch (e) { navigator.clipboard.writeText(md).then(() => toastNote(tr('exp.copied'))); }
+    } else if (navigator.clipboard) { navigator.clipboard.writeText(md).then(() => toastNote(tr('exp.copied'))); }
+    else { alert(md); }
+  }
+}
+function renderNotesGraph(board) {
+  const nodes = notes.map(n => ({ id: n.id, title: n.title || tr('notes.untitled'), deg: 0, x: 0, y: 0 }));
+  const idIndex = {}; nodes.forEach((n, i) => idIndex[n.id] = i);
+  const byTitle = {}; notes.forEach(n => { byTitle[(n.title || '').trim().toLowerCase()] = n.id; });
+  const edges = [];
+  notes.forEach(n => {
+    const refs = (n.content || '').match(/\[\[([^\]|\n]+?)(?:\|[^\]\n]+?)?\]\]/g) || [];
+    refs.forEach(r => { const t = r.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim().toLowerCase(); const tid = byTitle[t]; if (tid && tid !== n.id) edges.push([n.id, tid]); });
+  });
+  edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; if (a) a.deg++; if (b) b.deg++; });
+  const W = 820, H = 560;
+  nodes.forEach((n, i) => { const ang = (i / Math.max(1, nodes.length)) * Math.PI * 2; n.x = W / 2 + Math.cos(ang) * 170 + (i % 2 ? 18 : -18); n.y = H / 2 + Math.sin(ang) * 170; });
+  for (let it = 0; it < 300; it++) {
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      let dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y, d2 = dx * dx + dy * dy || 0.01;
+      const d = Math.sqrt(d2), f = 2600 / d2, ux = dx / d, uy = dy / d;
+      nodes[i].x += ux * f; nodes[i].y += uy * f; nodes[j].x -= ux * f; nodes[j].y -= uy * f;
+    }
+    edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = (d - 120) * 0.02, ux = dx / d, uy = dy / d; a.x += ux * f; a.y += uy * f; b.x -= ux * f; b.y -= uy * f; });
+    nodes.forEach(n => { n.x += (W / 2 - n.x) * 0.004; n.y += (H / 2 - n.y) * 0.004; });
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x); maxY = Math.max(maxY, n.y); });
+  if (!nodes.length) { minX = 0; minY = 0; maxX = W; maxY = H; }
+  const pad = 70, sw = Math.max(1, maxX - minX), sh = Math.max(1, maxY - minY);
+  nodes.forEach(n => { n.px = pad + (n.x - minX) / sw * (W - 2 * pad); n.py = pad + (n.y - minY) / sh * (H - 2 * pad); });
+  const linesSvg = edges.map(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; return '<line x1="' + a.px.toFixed(1) + '" y1="' + a.py.toFixed(1) + '" x2="' + b.px.toFixed(1) + '" y2="' + b.py.toFixed(1) + '" class="graph-edge"/>'; }).join('');
+  const nodesSvg = nodes.map(n => { const r = 8 + Math.min(14, n.deg * 2); return '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '" transform="translate(' + n.px.toFixed(1) + ',' + n.py.toFixed(1) + ')"><circle r="' + r + '"></circle><text y="' + (r + 13) + '">' + escHtml(n.title.slice(0, 24)) + '</text></g>'; }).join('');
+  board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(tr('graph.title')) + ' · ' + nodes.length + '</span></div>' +
+    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet">' + linesSvg + nodesSvg + '</svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
+  const backBtn = document.getElementById('graph-back'); if (backBtn) backBtn.addEventListener('click', () => { notesGraph = false; renderBoard(); });
+  board.querySelectorAll('[data-graph-note]').forEach(g => g.addEventListener('click', () => { activeNoteId = g.dataset.graphNote; notesGraph = false; renderBoard(); }));
   refreshIcons();
 }
 
