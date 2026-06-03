@@ -49,6 +49,18 @@ let notes = [];
 let activeNoteId = null;
 let notesGraph = false;
 let noteCaret = null;
+const GRAPH_COLORS = ['#6161ff', '#1a8cff', '#00a65a', '#e08a00', '#e0466e', '#9b5de5', '#00b8a9'];
+let graphNodeSize = (function(){ const v = parseFloat(localStorage.getItem('tb_graph_size')); return (v >= 0.5 && v <= 2.5) ? v : 1; })();
+let graphNodeColor = localStorage.getItem('tb_graph_color') || '#6161ff';
+let graphZoom = 1, graphPanX = 0, graphPanY = 0;
+let notesSearch = '';
+let notesSort = (function(){ const v = localStorage.getItem('tb_notes_sort'); return ['manual', 'title', 'newest', 'oldest'].indexOf(v) >= 0 ? v : 'manual'; })();
+let notesDragId = null;
+let anConfig = (function(){ try { const o = JSON.parse(localStorage.getItem('tb_an_config') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } })();
+let anConfigOpen = false;
+function anOn(k) { return anConfig[k] !== false; }
+function saveAnConfig() { try { localStorage.setItem('tb_an_config', JSON.stringify(anConfig)); } catch (e) {} }
+function saveGraphPrefs() { try { localStorage.setItem('tb_graph_size', String(graphNodeSize)); localStorage.setItem('tb_graph_color', graphNodeColor); } catch (e) {} }
 let notesTableMissing = false;
 let presentations = [];
 let activeDeckId = null;
@@ -199,8 +211,8 @@ Object.assign(I18N['pt-BR'], {
 });
 Object.assign(I18N.en, { 'notes.split':'Split','notes.md':'Markdown','notes.rich':'Rich','notes.focus':'Focus mode','notes.exitFocus':'Exit focus' });
 Object.assign(I18N['pt-BR'], { 'notes.split':'Dividido','notes.md':'Markdown','notes.rich':'Visual','notes.focus':'Modo foco','notes.exitFocus':'Sair do foco' });
-Object.assign(I18N.en, { 'an.tab':'Analytics','an.title':'Analytics','an.kTotal':'Total tasks','an.kDone':'Completed','an.kOpen':'Open','an.kOverdue':'Overdue','an.kRate':'Completion','an.doneWeek':'done this week','an.doneMonth':'done (30 days)','an.dueSoon':'due in 7 days','an.byStatus':'Tasks by status','an.byPriority':'Tasks by priority','an.byGroup':'Tasks by group','an.completions':'Completed per week (last 8)','an.subtasks':'Subtasks','an.subtaskProgress':'{d} of {t} subtasks done','an.notes':'Notes','an.noteCount':'Notes','an.noteWords':'Words written','an.lastEdited':'Last edited','an.never':'—','an.tickets':'Tickets','an.tkOpen':'Open','an.tkDone':'Resolved','an.byCategory':'By category','an.noData':'No data yet.','an.completionsHint':'Tracked from now on.' });
-Object.assign(I18N['pt-BR'], { 'an.tab':'Análise','an.title':'Análise','an.kTotal':'Total de tarefas','an.kDone':'Concluídas','an.kOpen':'Em aberto','an.kOverdue':'Atrasadas','an.kRate':'Conclusão','an.doneWeek':'concluídas na semana','an.doneMonth':'concluídas (30 dias)','an.dueSoon':'vencem em 7 dias','an.byStatus':'Tarefas por status','an.byPriority':'Tarefas por prioridade','an.byGroup':'Tarefas por grupo','an.completions':'Concluídas por semana (últimas 8)','an.subtasks':'Subtarefas','an.subtaskProgress':'{d} de {t} subtarefas concluídas','an.notes':'Notas','an.noteCount':'Notas','an.noteWords':'Palavras escritas','an.lastEdited':'Última edição','an.never':'—','an.tickets':'Chamados','an.tkOpen':'Abertos','an.tkDone':'Resolvidos','an.byCategory':'Por categoria','an.noData':'Sem dados ainda.','an.completionsHint':'Registrado a partir de agora.' });
+Object.assign(I18N.en, { 'an.tab':'Analytics','an.title':'Analytics','an.kTotal':'Total tasks','an.kDone':'Completed','an.kOpen':'Open','an.kOverdue':'Overdue','an.kRate':'Completion','an.doneWeek':'done this week','an.doneMonth':'done (30 days)','an.dueSoon':'due in 7 days','an.byStatus':'Tasks by status','an.byPriority':'Tasks by priority','an.byGroup':'Tasks by group','an.completions':'Completed per week (last 8)','an.subtasks':'Subtasks','an.subtaskProgress':'{d} of {t} subtasks done','an.notes':'Notes','an.noteCount':'Notes','an.noteWords':'Words written','an.lastEdited':'Last edited','an.never':'—','an.tickets':'Tickets','an.tkOpen':'Open','an.tkDone':'Resolved','an.byCategory':'By category','an.noData':'No data yet.','an.completionsHint':'Tracked from now on.','an.configure':'Configure','an.cfg.cards':'Summary cards' });
+Object.assign(I18N['pt-BR'], { 'an.tab':'Análise','an.title':'Análise','an.kTotal':'Total de tarefas','an.kDone':'Concluídas','an.kOpen':'Em aberto','an.kOverdue':'Atrasadas','an.kRate':'Conclusão','an.doneWeek':'concluídas na semana','an.doneMonth':'concluídas (30 dias)','an.dueSoon':'vencem em 7 dias','an.byStatus':'Tarefas por status','an.byPriority':'Tarefas por prioridade','an.byGroup':'Tarefas por grupo','an.completions':'Concluídas por semana (últimas 8)','an.subtasks':'Subtarefas','an.subtaskProgress':'{d} de {t} subtarefas concluídas','an.notes':'Notas','an.noteCount':'Notas','an.noteWords':'Palavras escritas','an.lastEdited':'Última edição','an.never':'—','an.tickets':'Chamados','an.tkOpen':'Abertos','an.tkDone':'Resolvidos','an.byCategory':'Por categoria','an.noData':'Sem dados ainda.','an.completionsHint':'Registrado a partir de agora.','an.configure':'Configurar','an.cfg.cards':'Cards de resumo' });
 Object.assign(I18N.en, { 'tb.changePhoto':'Change photo','tb.removePhoto':'Remove photo','tb.toggleSidebar':'Show / hide the sidebar','cols.btn':'Columns','cols.title':'Show columns' });
 Object.assign(I18N['pt-BR'], { 'tb.changePhoto':'Trocar foto','tb.removePhoto':'Remover foto','tb.toggleSidebar':'Mostrar / ocultar a barra lateral','cols.btn':'Colunas','cols.title':'Mostrar colunas' });
 Object.assign(I18N.en, { 'rt.smaller':'Smaller text','rt.bigger':'Bigger text','rt.highlight':'Highlight','rt.clearHl':'Clear highlight' });
@@ -213,8 +225,10 @@ Object.assign(I18N.en, { 'theme.light':'Light','theme.dark':'Dark','theme.midnig
 Object.assign(I18N['pt-BR'], { 'theme.light':'Claro','theme.dark':'Escuro','theme.midnight':'Meia-noite','theme.forest':'Floresta','theme.ocean':'Oceano','theme.rose':'Rosé' });
 Object.assign(I18N.en, { 'rt.table':'Table','table.insert':'Insert table','table.addRow':'Add row','table.addCol':'Add column','table.delRow':'Delete row','table.delCol':'Delete column','table.alignLeft':'Align left','table.alignCenter':'Align center','table.alignRight':'Align right' });
 Object.assign(I18N['pt-BR'], { 'rt.table':'Tabela','table.insert':'Inserir tabela','table.addRow':'Adicionar linha','table.addCol':'Adicionar coluna','table.delRow':'Excluir linha','table.delCol':'Excluir coluna','table.alignLeft':'Alinhar à esquerda','table.alignCenter':'Centralizar','table.alignRight':'Alinhar à direita' });
-Object.assign(I18N.en, { 'ins.btn':'Insert','ins.date':"Today's date",'ins.datetime':'Date & time','ins.tag':'Tag','ins.attr':'Attribute','ins.link':'Link to note…','ins.tagPrompt':'Tag name:','ins.attrPrompt':'Attribute name:','ins.linkTitle':'Link to a note','ins.linkPh':'Search notes…','exp.btn':'Export','exp.copy':'Copy to clipboard','exp.html':'Export as HTML','exp.pdf':'Export as PDF','exp.copied':'Copied!','exp.popup':'Allow pop-ups to export PDF.','graph.title':'Notes graph','graph.back':'Back to notes' });
-Object.assign(I18N['pt-BR'], { 'ins.btn':'Inserir','ins.date':'Data de hoje','ins.datetime':'Data e hora','ins.tag':'Tag','ins.attr':'Atributo','ins.link':'Linkar nota…','ins.tagPrompt':'Nome da tag:','ins.attrPrompt':'Nome do atributo:','ins.linkTitle':'Linkar a uma nota','ins.linkPh':'Buscar notas…','exp.btn':'Exportar','exp.copy':'Copiar para a área de transferência','exp.html':'Exportar como HTML','exp.pdf':'Exportar como PDF','exp.copied':'Copiado!','exp.popup':'Permita pop-ups para exportar o PDF.','graph.title':'Grafo de notas','graph.back':'Voltar às notas' });
+Object.assign(I18N.en, { 'ins.btn':'Insert','ins.date':"Today's date",'ins.datetime':'Date & time','ins.tag':'Tag','ins.attr':'Attribute','ins.link':'Link to note…','ins.tagPrompt':'Tag name:','ins.attrPrompt':'Attribute name:','ins.linkTitle':'Link to a note','ins.linkPh':'Search notes…','exp.btn':'Export','exp.copy':'Copy to clipboard','exp.html':'Export as HTML','exp.pdf':'Export as PDF','exp.copied':'Copied!','exp.popup':'Allow pop-ups to export PDF.','graph.title':'Notes graph','graph.back':'Back to notes','graph.zoomIn':'Zoom in','graph.zoomOut':'Zoom out','graph.reset':'Reset view','graph.nodeSize':'Node size','graph.nodeColor':'Node color' });
+Object.assign(I18N.en, { 'notes.search':'Search notes…','notes.sort.manual':'Manual order','notes.sort.title':'Title (A–Z)','notes.sort.newest':'Newest first','notes.sort.oldest':'Oldest first' });
+Object.assign(I18N['pt-BR'], { 'ins.btn':'Inserir','ins.date':'Data de hoje','ins.datetime':'Data e hora','ins.tag':'Tag','ins.attr':'Atributo','ins.link':'Linkar nota…','ins.tagPrompt':'Nome da tag:','ins.attrPrompt':'Nome do atributo:','ins.linkTitle':'Linkar a uma nota','ins.linkPh':'Buscar notas…','exp.btn':'Exportar','exp.copy':'Copiar para a área de transferência','exp.html':'Exportar como HTML','exp.pdf':'Exportar como PDF','exp.copied':'Copiado!','exp.popup':'Permita pop-ups para exportar o PDF.','graph.title':'Grafo de notas','graph.back':'Voltar às notas','graph.zoomIn':'Aproximar','graph.zoomOut':'Afastar','graph.reset':'Redefinir visão','graph.nodeSize':'Tamanho dos nodes','graph.nodeColor':'Cor dos nodes' });
+Object.assign(I18N['pt-BR'], { 'notes.search':'Buscar notas…','notes.sort.manual':'Ordem manual','notes.sort.title':'Título (A–Z)','notes.sort.newest':'Mais recentes','notes.sort.oldest':'Mais antigas' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
@@ -2085,12 +2099,18 @@ function renderNotes(board) {
   if (!activeNoteId && notes.length) activeNoteId = notes[0].id;
   const active = notes.find(n => n.id === activeNoteId) || null;
 
-  const listHtml = notes.length
-    ? notes.map(n => `<button class="note-item${n.id === activeNoteId ? ' active' : ''}" data-note="${escHtml(n.id)}">
-         <span class="note-item-title">${escHtml(n.title || tr('notes.untitled'))}</span>
-         <span class="note-item-snippet">${escHtml(stripInlineMd(n.content).slice(0, 90))}</span>
-       </button>`).join('')
-    : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>';
+  let displayNotes = notes.slice();
+  const nq = notesSearch.trim().toLowerCase();
+  if (nq) displayNotes = displayNotes.filter(n => (n.title || '').toLowerCase().includes(nq) || (n.content || '').toLowerCase().includes(nq));
+  if (notesSort === 'title') displayNotes.sort((a, b) => (a.title || tr('notes.untitled')).localeCompare(b.title || tr('notes.untitled'), undefined, { sensitivity: 'base' }));
+  else if (notesSort === 'newest') displayNotes.sort((a, b) => (b.created || 0) - (a.created || 0));
+  else if (notesSort === 'oldest') displayNotes.sort((a, b) => (a.created || 0) - (b.created || 0));
+  const canReorder = notesSort === 'manual';
+  const listHtml = !notes.length
+    ? '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>'
+    : (displayNotes.length
+      ? displayNotes.map(n => `<button class="note-item${n.id === activeNoteId ? ' active' : ''}" data-note="${escHtml(n.id)}"${canReorder ? ' draggable="true"' : ''}>${canReorder ? '<span class="note-drag" aria-hidden="true"><i data-lucide="grip-vertical"></i></span>' : ''}<span class="note-item-body"><span class="note-item-title">${escHtml(n.title || tr('notes.untitled'))}</span><span class="note-item-snippet">${escHtml(stripInlineMd(n.content).slice(0, 90))}</span></span></button>`).join('')
+      : '<div class="notes-empty notes-noresult">' + escHtml(tr('pres.noResults')) + '</div>');
 
   const banner = notesTableMissing ? `<div class="notes-banner">${escHtml(tr('notes.tableMissing'))}</div>` : '';
   const modeBtn = (m, lbl) => `<button class="note-mode-btn${noteMode === m ? ' active' : ''}" data-nmode="${m}">${escHtml(lbl)}</button>`;
@@ -2125,6 +2145,7 @@ function renderNotes(board) {
   board.innerHTML = `${banner}<div class="notes-wrap${noteFocus ? ' focus' : ''}">
       <div class="notes-list">
         <div class="notes-list-head"><button class="btn-primary notes-new-btn" id="note-new">${escHtml(tr('notes.new'))}</button><button class="btn-ghost notes-graph-btn" id="notes-graph-btn" title="${escHtml(tr('graph.title'))}"><i data-lucide="workflow"></i></button></div>
+        <div class="notes-toolbar"><div class="notes-search-wrap"><i data-lucide="search"></i><input type="text" id="notes-search" class="notes-search" placeholder="${escHtml(tr('notes.search'))}" value="${escHtml(notesSearch)}"></div><select id="notes-sort" class="notes-sort">${['manual', 'title', 'newest', 'oldest'].map(o => `<option value="${o}"${notesSort === o ? ' selected' : ''}>${escHtml(tr('notes.sort.' + o))}</option>`).join('')}</select></div>
         <div class="notes-items">${listHtml}</div>
       </div>
       <div class="notes-main">${mainHtml}</div>
@@ -2137,6 +2158,32 @@ function renderNotes(board) {
     const ti = document.getElementById('note-title'); if (ti) ti.focus();
   });
   board.querySelectorAll('[data-note]').forEach(el => el.addEventListener('click', () => { activeNoteId = el.dataset.note; renderBoard(); }));
+  const noteSearchEl = document.getElementById('notes-search');
+  if (noteSearchEl) noteSearchEl.addEventListener('input', () => {
+    notesSearch = noteSearchEl.value;
+    const ql = notesSearch.trim().toLowerCase();
+    const itemsBox = board.querySelector('.notes-items');
+    let anyVisible = false;
+    board.querySelectorAll('.notes-items .note-item').forEach(it => {
+      const n = notes.find(x => x.id === it.dataset.note);
+      const match = !ql || (n && ((n.title || '').toLowerCase().includes(ql) || (n.content || '').toLowerCase().includes(ql)));
+      it.classList.toggle('hidden-note', !match); if (match) anyVisible = true;
+    });
+    let nr = board.querySelector('.notes-noresult');
+    if (!anyVisible && notes.length) { if (!nr && itemsBox) { nr = document.createElement('div'); nr.className = 'notes-empty notes-noresult'; nr.textContent = tr('pres.noResults'); itemsBox.appendChild(nr); } }
+    else if (nr) nr.remove();
+  });
+  const noteSortEl = document.getElementById('notes-sort');
+  if (noteSortEl) noteSortEl.addEventListener('change', () => { notesSort = noteSortEl.value; try { localStorage.setItem('tb_notes_sort', notesSort); } catch (e) {} renderBoard(); });
+  if (notesSort === 'manual') {
+    board.querySelectorAll('.notes-items .note-item').forEach(it => {
+      it.addEventListener('dragstart', e => { notesDragId = it.dataset.note; it.classList.add('dragging'); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; });
+      it.addEventListener('dragend', () => { it.classList.remove('dragging'); board.querySelectorAll('.note-item.drop-target').forEach(x => x.classList.remove('drop-target')); });
+      it.addEventListener('dragover', e => { e.preventDefault(); it.classList.add('drop-target'); });
+      it.addEventListener('dragleave', () => it.classList.remove('drop-target'));
+      it.addEventListener('drop', e => { e.preventDefault(); const targetId = it.dataset.note; if (!notesDragId || notesDragId === targetId) { notesDragId = null; return; } const from = notes.findIndex(n => n.id === notesDragId), to = notes.findIndex(n => n.id === targetId); notesDragId = null; if (from < 0 || to < 0) return; const m = notes.splice(from, 1)[0]; notes.splice(to, 0, m); saveNotes(); renderBoard(); });
+    });
+  }
   board.querySelectorAll('[data-nmode]').forEach(b => b.addEventListener('click', () => { noteMode = b.dataset.nmode; saveNotePrefs(); renderBoard(); }));
   const focusBtn = document.getElementById('note-focus');
   if (focusBtn) focusBtn.addEventListener('click', () => { noteFocus = !noteFocus; saveNotePrefs(); renderBoard(); });
@@ -2454,21 +2501,33 @@ function renderAnalytics(board) {
       '</div><div class="an-sub">' + escHtml(tr('an.byCategory')) + '</div>' + byCat + '</div>';
   }
 
+  const anItems = [['cards', 'an.cfg.cards'], ['status', 'an.byStatus'], ['priority', 'an.byPriority'], ['group', 'an.byGroup'], ['completions', 'an.completions'], ['subtasks', 'an.subtasks'], ['notes', 'an.notes']];
+  if (USER_ROLE === 'admin' && tickets.length) anItems.push(['tickets', 'an.tickets']);
+  const anConfigMenu = '<div class="dropdown an-config-wrap"><button class="btn-ghost" id="an-config-btn"><i data-lucide="sliders-horizontal"></i> <span>' + escHtml(tr('an.configure')) + '</span></button><div class="dropdown-menu" id="an-config-menu"' + (anConfigOpen ? '' : ' hidden') + '>' + anItems.map(it => '<label class="an-config-item"><input type="checkbox" data-ancfg="' + it[0] + '"' + (anOn(it[0]) ? ' checked' : '') + '> ' + escHtml(tr(it[1])) + '</label>').join('') + '</div></div>';
+
+  const miniBlock = '<div class="an-mini"><span><i data-lucide="check-circle-2"></i> <b>' + doneWeek + '</b> ' + escHtml(tr('an.doneWeek')) + '</span><span><i data-lucide="calendar-days"></i> <b>' + doneMonth + '</b> ' + escHtml(tr('an.doneMonth')) + '</span><span><i data-lucide="alarm-clock"></i> <b>' + dueSoon + '</b> ' + escHtml(tr('an.dueSoon')) + '</span></div>';
+  const cardsBlock = anOn('cards') ? ('<div class="an-cards">' + cards + '</div>' + miniBlock) : '';
+  const gridParts = [];
+  if (anOn('status')) gridParts.push('<div class="an-section"><h3>' + escHtml(tr('an.byStatus')) + '</h3>' + byStatus + '</div>');
+  if (anOn('priority')) gridParts.push('<div class="an-section"><h3>' + escHtml(tr('an.byPriority')) + '</h3>' + byPrio + '</div>');
+  if (anOn('group')) gridParts.push('<div class="an-section"><h3>' + escHtml(tr('an.byGroup')) + '</h3>' + byGroup + '</div>');
+  if (anOn('completions')) gridParts.push('<div class="an-section"><h3>' + escHtml(tr('an.completions')) + '</h3>' + (completedTs.length ? colChart : '<div class="an-empty">' + escHtml(tr('an.noData')) + ' ' + escHtml(tr('an.completionsHint')) + '</div>') + '</div>');
+  const gridBlock = gridParts.length ? ('<div class="an-grid">' + gridParts.join('') + '</div>') : '';
+  const subtasksBlock = anOn('subtasks') ? ('<div class="an-section"><h3>' + escHtml(tr('an.subtasks')) + '</h3>' + subProgress + '</div>') : '';
+  const notesBlock = anOn('notes') ? ('<div class="an-section"><h3>' + escHtml(tr('an.notes')) + '</h3><div class="an-cards">' + anCard(noteCount, tr('an.noteCount')) + anCard(noteWords, tr('an.noteWords')) + '</div>' +
+    '<div class="an-mini"><span><i data-lucide="file-text"></i> ' + escHtml(tr('an.lastEdited')) + ': <b>' + escHtml(lastNote) + '</b></span></div></div>') : '';
+  const tkBlock = anOn('tickets') ? ticketsSection : '';
+
   board.innerHTML = '<div class="an-wrap">' +
-    '<h2 class="an-h2">' + escHtml(tr('an.title')) + '</h2>' +
-    '<div class="an-cards">' + cards + '</div>' +
-    '<div class="an-mini"><span><i data-lucide="check-circle-2"></i> <b>' + doneWeek + '</b> ' + escHtml(tr('an.doneWeek')) + '</span><span><i data-lucide="calendar-days"></i> <b>' + doneMonth + '</b> ' + escHtml(tr('an.doneMonth')) + '</span><span><i data-lucide="alarm-clock"></i> <b>' + dueSoon + '</b> ' + escHtml(tr('an.dueSoon')) + '</span></div>' +
-    '<div class="an-grid">' +
-      '<div class="an-section"><h3>' + escHtml(tr('an.byStatus')) + '</h3>' + byStatus + '</div>' +
-      '<div class="an-section"><h3>' + escHtml(tr('an.byPriority')) + '</h3>' + byPrio + '</div>' +
-      '<div class="an-section"><h3>' + escHtml(tr('an.byGroup')) + '</h3>' + byGroup + '</div>' +
-      '<div class="an-section"><h3>' + escHtml(tr('an.completions')) + '</h3>' + (completedTs.length ? colChart : '<div class="an-empty">' + escHtml(tr('an.noData')) + ' ' + escHtml(tr('an.completionsHint')) + '</div>') + '</div>' +
-    '</div>' +
-    '<div class="an-section"><h3>' + escHtml(tr('an.subtasks')) + '</h3>' + subProgress + '</div>' +
-    '<div class="an-section"><h3>' + escHtml(tr('an.notes')) + '</h3><div class="an-cards">' + anCard(noteCount, tr('an.noteCount')) + anCard(noteWords, tr('an.noteWords')) + '</div>' +
-      '<div class="an-mini"><span><i data-lucide="file-text"></i> ' + escHtml(tr('an.lastEdited')) + ': <b>' + escHtml(lastNote) + '</b></span></div></div>' +
-    ticketsSection +
+    '<div class="an-header"><h2 class="an-h2">' + escHtml(tr('an.title')) + '</h2>' + anConfigMenu + '</div>' +
+    cardsBlock + gridBlock + subtasksBlock + notesBlock + tkBlock +
   '</div>';
+
+  const anCfgBtn = document.getElementById('an-config-btn');
+  if (anCfgBtn) anCfgBtn.addEventListener('click', e => { e.stopPropagation(); anConfigOpen = !anConfigOpen; const m = document.getElementById('an-config-menu'); if (m) m.hidden = !anConfigOpen; });
+  board.querySelectorAll('[data-ancfg]').forEach(cb => cb.addEventListener('change', () => { anConfig[cb.dataset.ancfg] = cb.checked; saveAnConfig(); anConfigOpen = true; renderBoard(); }));
+  if (!window.__anCfgBound) { window.__anCfgBound = true; document.addEventListener('click', e => { if (!e.target.closest('.an-config-wrap')) { anConfigOpen = false; const m = document.getElementById('an-config-menu'); if (m) m.hidden = true; } }); }
+  refreshIcons();
 }
 
 // ============================================================
@@ -2797,11 +2856,38 @@ function renderNotesGraph(board) {
   const pad = 70, sw = Math.max(1, maxX - minX), sh = Math.max(1, maxY - minY);
   nodes.forEach(n => { n.px = pad + (n.x - minX) / sw * (W - 2 * pad); n.py = pad + (n.y - minY) / sh * (H - 2 * pad); });
   const linesSvg = edges.map(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; return '<line x1="' + a.px.toFixed(1) + '" y1="' + a.py.toFixed(1) + '" x2="' + b.px.toFixed(1) + '" y2="' + b.py.toFixed(1) + '" class="graph-edge"/>'; }).join('');
-  const nodesSvg = nodes.map(n => { const r = 8 + Math.min(14, n.deg * 2); return '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '" transform="translate(' + n.px.toFixed(1) + ',' + n.py.toFixed(1) + ')"><circle r="' + r + '"></circle><text y="' + (r + 13) + '">' + escHtml(n.title.slice(0, 24)) + '</text></g>'; }).join('');
-  board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(tr('graph.title')) + ' · ' + nodes.length + '</span></div>' +
-    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet">' + linesSvg + nodesSvg + '</svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
+  const nodesSvg = nodes.map(n => { const baseR = 8 + Math.min(14, n.deg * 2); const r = baseR * graphNodeSize; return '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '" transform="translate(' + n.px.toFixed(1) + ',' + n.py.toFixed(1) + ')"><circle r="' + r.toFixed(1) + '" data-base-r="' + baseR + '"></circle><text y="' + (r + 13).toFixed(1) + '">' + escHtml(n.title.slice(0, 24)) + '</text></g>'; }).join('');
+  graphZoom = 1; graphPanX = 0; graphPanY = 0;
+  const controls = '<div class="graph-controls">' +
+    '<button class="icon-btn" data-gzoom="out" title="' + escHtml(tr('graph.zoomOut')) + '"><i data-lucide="minus"></i></button>' +
+    '<button class="icon-btn" data-gzoom="in" title="' + escHtml(tr('graph.zoomIn')) + '"><i data-lucide="plus"></i></button>' +
+    '<button class="icon-btn" data-gzoom="reset" title="' + escHtml(tr('graph.reset')) + '"><i data-lucide="maximize"></i></button>' +
+    '<span class="graph-ctl-sep"></span>' +
+    '<span class="graph-size" title="' + escHtml(tr('graph.nodeSize')) + '"><i data-lucide="circle"></i><input type="range" id="graph-size" min="0.5" max="2.5" step="0.1" value="' + graphNodeSize + '"></span>' +
+    '<span class="graph-colors">' + GRAPH_COLORS.map(c => '<button class="graph-color-sw' + (c === graphNodeColor ? ' active' : '') + '" data-gcolor="' + c + '" style="background:' + c + '" title="' + escHtml(tr('graph.nodeColor')) + '"></button>').join('') + '</span>' +
+    '</div>';
+  board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(tr('graph.title')) + ' · ' + nodes.length + '</span>' + (nodes.length ? controls : '') + '</div>' +
+    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet" style="--node-fill:' + graphNodeColor + '"><g id="graph-vp">' + linesSvg + nodesSvg + '</g></svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
   const backBtn = document.getElementById('graph-back'); if (backBtn) backBtn.addEventListener('click', () => { notesGraph = false; renderBoard(); });
   board.querySelectorAll('[data-graph-note]').forEach(g => g.addEventListener('click', () => { activeNoteId = g.dataset.graphNote; notesGraph = false; renderBoard(); }));
+  const svg = board.querySelector('.graph-svg'), vp = board.querySelector('#graph-vp');
+  function applyVp() { if (vp) vp.setAttribute('transform', 'translate(' + graphPanX.toFixed(1) + ' ' + graphPanY.toFixed(1) + ') scale(' + graphZoom.toFixed(3) + ')'); }
+  function zoomAt(vbX, vbY, factor) { const nz = Math.max(0.3, Math.min(4, graphZoom * factor)); const wx = (vbX - graphPanX) / graphZoom, wy = (vbY - graphPanY) / graphZoom; graphPanX = vbX - wx * nz; graphPanY = vbY - wy * nz; graphZoom = nz; applyVp(); }
+  if (svg) {
+    svg.addEventListener('wheel', e => { e.preventDefault(); const rect = svg.getBoundingClientRect(); const vbX = (e.clientX - rect.left) / rect.width * W, vbY = (e.clientY - rect.top) / rect.height * H; zoomAt(vbX, vbY, e.deltaY < 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+    let dragging = false, lx = 0, ly = 0;
+    svg.addEventListener('pointerdown', e => { if (e.target.closest('.graph-node')) return; dragging = true; lx = e.clientX; ly = e.clientY; try { svg.setPointerCapture(e.pointerId); } catch (er) {} svg.classList.add('grabbing'); });
+    svg.addEventListener('pointermove', e => { if (!dragging) return; const rect = svg.getBoundingClientRect(); graphPanX += (e.clientX - lx) / rect.width * W; graphPanY += (e.clientY - ly) / rect.height * H; lx = e.clientX; ly = e.clientY; applyVp(); });
+    const endDrag = () => { dragging = false; svg.classList.remove('grabbing'); };
+    svg.addEventListener('pointerup', endDrag); svg.addEventListener('pointerleave', endDrag);
+    const zb = sel => board.querySelector('[data-gzoom="' + sel + '"]');
+    if (zb('in')) zb('in').addEventListener('click', () => zoomAt(W / 2, H / 2, 1.2));
+    if (zb('out')) zb('out').addEventListener('click', () => zoomAt(W / 2, H / 2, 1 / 1.2));
+    if (zb('reset')) zb('reset').addEventListener('click', () => { graphZoom = 1; graphPanX = 0; graphPanY = 0; applyVp(); });
+    const sizeEl = document.getElementById('graph-size');
+    if (sizeEl) sizeEl.addEventListener('input', () => { graphNodeSize = parseFloat(sizeEl.value) || 1; board.querySelectorAll('.graph-node').forEach(g => { const c = g.querySelector('circle'), t = g.querySelector('text'); const br = parseFloat(c.getAttribute('data-base-r')) || 8, r = br * graphNodeSize; c.setAttribute('r', r.toFixed(1)); if (t) t.setAttribute('y', (r + 13).toFixed(1)); }); saveGraphPrefs(); });
+    board.querySelectorAll('[data-gcolor]').forEach(b => b.addEventListener('click', () => { graphNodeColor = b.dataset.gcolor; if (svg) svg.style.setProperty('--node-fill', graphNodeColor); board.querySelectorAll('[data-gcolor]').forEach(x => x.classList.toggle('active', x === b)); saveGraphPrefs(); }));
+  }
   refreshIcons();
 }
 
