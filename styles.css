@@ -1337,9 +1337,20 @@ body.slides-active #groupby-btn { display: none; }
 .graph-svg { flex: 1; width: 100%; min-height: 0; background: var(--white); border: 1px solid var(--border); border-radius: 12px; cursor: grab; touch-action: none; }
 .graph-svg.grabbing { cursor: grabbing; }
 .graph-edge { stroke: var(--border); stroke-width: 1.5; }
-.graph-node circle { fill: var(--node-fill, var(--purple)); cursor: pointer; transition: r .1s, filter .12s; }
-.graph-node:hover circle { filter: brightness(1.18); }
+.graph-node { cursor: pointer; }
+.graph-node .node-shape { transition: filter .12s; }
+.graph-node:hover .node-shape { filter: brightness(1.18); }
+.graph-node.selected .node-shape { stroke: var(--text); stroke-width: 2.5; paint-order: stroke; }
 .graph-node text { fill: var(--text-light); font-size: 11px; text-anchor: middle; font-family: inherit; pointer-events: none; }
+.graph-node-panel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; margin-bottom: 8px; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.graph-node-panel[hidden] { display: none; }
+.gnp-title { font-weight: 700; font-size: 13px; color: var(--text); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gnp-group { display: inline-flex; align-items: center; gap: 5px; }
+.graph-node-panel .icon-btn { width: 28px; height: 28px; }
+.gnp-shape { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 6px; background: var(--white); color: var(--text-light); cursor: pointer; padding: 0; }
+.gnp-shape.active { border-color: var(--purple); color: var(--purple); }
+.gnp-shape:hover { color: var(--purple); }
+.gnp-shape svg { display: block; }
 .graph-controls { display: flex; align-items: center; gap: 7px; margin-left: auto; flex-wrap: wrap; }
 .graph-controls .icon-btn { width: 30px; height: 30px; }
 .graph-ctl-sep { width: 1px; height: 20px; background: var(--border); }
