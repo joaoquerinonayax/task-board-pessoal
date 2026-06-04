@@ -38,7 +38,7 @@ let pullTimer = null;
 let pendingSave = false;
 let lastPushAt = 0;
 let rtChannel = null;
-const dirty = { tasks: false, columns: false, groups: false, notes: false, presentations: false };
+const dirty = { tasks: false, columns: false, groups: false, notes: false, presentations: false, prefs: false };
 let seenCols = new Set();
 let seenGroups = new Set();
 let dragIndicator = null;        // card drop placeholder
@@ -59,8 +59,8 @@ let notesDragId = null;
 let anConfig = (function(){ try { const o = JSON.parse(localStorage.getItem('tb_an_config') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } })();
 let anConfigOpen = false;
 function anOn(k) { return anConfig[k] !== false; }
-function saveAnConfig() { try { localStorage.setItem('tb_an_config', JSON.stringify(anConfig)); } catch (e) {} }
-function saveGraphPrefs() { try { localStorage.setItem('tb_graph_size', String(graphNodeSize)); localStorage.setItem('tb_graph_color', graphNodeColor); } catch (e) {} }
+function saveAnConfig() { try { localStorage.setItem('tb_an_config', JSON.stringify(anConfig)); } catch (e) {} markPrefsDirty(); }
+function saveGraphPrefs() { try { localStorage.setItem('tb_graph_size', String(graphNodeSize)); localStorage.setItem('tb_graph_color', graphNodeColor); } catch (e) {} markPrefsDirty(); }
 let graphRaf = 0;
 let graphSelectedId = null;
 let graphNodeOverrides = (function(){ try { const o = JSON.parse(localStorage.getItem('tb_graph_nodes') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } })();
@@ -91,7 +91,7 @@ function getTurndown() {
   if (window.TurndownService) { try { _td = new window.TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced', emDelimiter: '*' }); if (_td.keep) _td.keep(['span', 'font', 'u', 'mark']); if (window.turndownPluginGfm && _td.use) _td.use(window.turndownPluginGfm.gfm); if (_td.addRule) _td.addRule('notelink', { filter: function(node){ return node.nodeName === 'A' && node.getAttribute && node.getAttribute('data-note-link'); }, replacement: function(content, node){ const t = node.getAttribute('data-note-link'); const lbl = (content || '').trim(); return '[[' + t + (lbl && lbl !== t ? '|' + lbl : '') + ']]'; } }); if (_td.addRule) _td.addRule('tableCellBr', { filter: function(node){ return node.nodeName === 'BR' && node.parentNode && (node.parentNode.nodeName === 'TD' || node.parentNode.nodeName === 'TH'); }, replacement: function(){ return ' '; } }); } catch (e) { _td = null; } }
   return _td;
 }
-function saveNotePrefs() { try { localStorage.setItem('tb_note_mode', noteMode); localStorage.setItem('tb_note_focus', noteFocus ? '1' : '0'); } catch (e) {} }
+function saveNotePrefs() { try { localStorage.setItem('tb_note_mode', noteMode); localStorage.setItem('tb_note_focus', noteFocus ? '1' : '0'); } catch (e) {} markPrefsDirty(); }
 
 let filters = {
   priorities: new Set(PRIORITIES),
@@ -237,7 +237,7 @@ function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
 function prioLabel(p) { return tr('prio.' + p); }
 function loadLang() { const l = localStorage.getItem(STORE_LANG); lang = (l === 'pt-BR' || l === 'en') ? l : 'en'; }
-function setLang(l) { lang = (l === 'pt-BR') ? 'pt-BR' : 'en'; localStorage.setItem(STORE_LANG, lang); applyI18n(); }
+function setLang(l) { lang = (l === 'pt-BR') ? 'pt-BR' : 'en'; localStorage.setItem(STORE_LANG, lang); markPrefsDirty(); applyI18n(); }
 function applyStaticI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.getAttribute('data-i18n')); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', tr(el.getAttribute('data-i18n-ph'))); });
@@ -302,18 +302,18 @@ function saveTasks()   { cacheSet('tasks',   tasks);   scheduleCloudSave('tasks'
 function saveNotes()   { cacheSet('notes',   notes);   scheduleCloudSave('notes'); }
 
 function loadGroupBy() { groupBy = localStorage.getItem(STORE_GROUPBY) === '1'; }
-function saveGroupBy() { localStorage.setItem(STORE_GROUPBY, groupBy ? '1' : '0'); }
+function saveGroupBy() { localStorage.setItem(STORE_GROUPBY, groupBy ? '1' : '0'); markPrefsDirty(); }
 
 function loadCollapsed() {
   try { const a = JSON.parse(localStorage.getItem(STORE_COLLAPSED) || '[]'); if (Array.isArray(a)) collapsedGroups = new Set(a); } catch (e) {}
 }
-function saveCollapsed() { localStorage.setItem(STORE_COLLAPSED, JSON.stringify([...collapsedGroups])); }
+function saveCollapsed() { localStorage.setItem(STORE_COLLAPSED, JSON.stringify([...collapsedGroups])); markPrefsDirty(); }
 
 function loadView() {
   const v = localStorage.getItem(STORE_VIEW);
   if (v === 'kanban' || v === 'table' || v === 'cards' || v === 'calendar' || v === 'notes' || v === 'tickets' || v === 'analytics' || v === 'slides') currentView = v;
 }
-function saveView() { localStorage.setItem(STORE_VIEW, currentView); }
+function saveView() { localStorage.setItem(STORE_VIEW, currentView); markPrefsDirty(); }
 
 // New columns/groups created on another device should auto-appear instead of
 // being hidden by an existing filter selection.
@@ -1907,6 +1907,86 @@ function rowToTask(r) {
 }
 
 // ---- Pull everything (cloud is the source of truth) ----
+// ============================================================
+//  Preferences sync -> cloud (so nothing lives only in the browser)
+// ============================================================
+let prefsTableMissing = false;
+let applyingPrefs = false;
+function collectPrefs() {
+  return {
+    theme: document.documentElement.getAttribute('data-theme') || 'light',
+    lang: lang,
+    view: currentView,
+    groupBy: !!groupBy,
+    collapsed: [...collapsedGroups],
+    notesSort: notesSort,
+    deckSort: deckSort,
+    noteMode: noteMode,
+    noteFocus: !!noteFocus,
+    graphNodeSize: graphNodeSize,
+    graphNodeColor: graphNodeColor,
+    graphNodes: graphNodeOverrides,
+    graphPos: graphPositions,
+    anConfig: anConfig,
+    hiddenCols: [...hiddenCols],
+    sidebarHidden: !!sidebarHidden,
+    avatar: avatarUrl || ''
+  };
+}
+function syncViewButtons() {
+  document.querySelectorAll('#view-switch button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+}
+function applyPrefs(p) {
+  if (!p || typeof p !== 'object') return;
+  applyingPrefs = true;
+  try {
+    if (typeof p.lang === 'string' && p.lang !== lang) setLang(p.lang);
+    if (typeof p.groupBy === 'boolean') groupBy = p.groupBy;
+    if (Array.isArray(p.collapsed)) collapsedGroups = new Set(p.collapsed);
+    if (typeof p.notesSort === 'string') notesSort = p.notesSort;
+    if (typeof p.deckSort === 'string') deckSort = p.deckSort;
+    if (typeof p.noteMode === 'string') noteMode = p.noteMode;
+    if (typeof p.noteFocus === 'boolean') noteFocus = p.noteFocus;
+    if (typeof p.graphNodeSize === 'number') graphNodeSize = p.graphNodeSize;
+    if (typeof p.graphNodeColor === 'string') graphNodeColor = p.graphNodeColor;
+    if (p.graphNodes && typeof p.graphNodes === 'object') graphNodeOverrides = p.graphNodes;
+    if (p.graphPos && typeof p.graphPos === 'object') graphPositions = p.graphPos;
+    if (p.anConfig && typeof p.anConfig === 'object') anConfig = p.anConfig;
+    if (Array.isArray(p.hiddenCols)) hiddenCols = new Set(p.hiddenCols);
+    if (typeof p.sidebarHidden === 'boolean') { sidebarHidden = p.sidebarHidden; applySidebarState(); }
+    if (typeof p.view === 'string') currentView = p.view;
+    if (typeof p.avatar === 'string') {
+      avatarUrl = p.avatar;
+      try { if (USER_ID) { if (avatarUrl) localStorage.setItem('tb_' + USER_ID + '_avatar', avatarUrl); else localStorage.removeItem('tb_' + USER_ID + '_avatar'); } } catch (e) {}
+      refreshAccountMenu();
+    }
+    if (typeof p.theme === 'string') applyTheme(p.theme);
+    syncViewButtons();
+    try {
+      localStorage.setItem(STORE_LANG, lang);
+      localStorage.setItem(STORE_VIEW, currentView);
+      localStorage.setItem(STORE_GROUPBY, groupBy ? '1' : '0');
+      localStorage.setItem(STORE_COLLAPSED, JSON.stringify([...collapsedGroups]));
+      localStorage.setItem('tb_notes_sort', notesSort);
+      localStorage.setItem('tb_deck_sort', deckSort);
+      localStorage.setItem('tb_note_mode', noteMode);
+      localStorage.setItem('tb_note_focus', noteFocus ? '1' : '0');
+      localStorage.setItem('tb_graph_size', String(graphNodeSize));
+      localStorage.setItem('tb_graph_color', graphNodeColor);
+      localStorage.setItem('tb_graph_nodes', JSON.stringify(graphNodeOverrides));
+      localStorage.setItem('tb_graph_pos', JSON.stringify(graphPositions));
+      localStorage.setItem('tb_an_config', JSON.stringify(anConfig));
+      localStorage.setItem('tb_hidden_cols', JSON.stringify([...hiddenCols]));
+      localStorage.setItem('tb_sidebar_hidden', sidebarHidden ? '1' : '0');
+    } catch (e) {}
+  } finally { applyingPrefs = false; }
+}
+function markPrefsDirty() { if (applyingPrefs) return; scheduleCloudSave('prefs'); }
+async function pushPrefs() {
+  const { error } = await sb.from('preferences').upsert({ user_id: USER_ID, data: collectPrefs() });
+  if (error) throw error;
+}
+
 async function pullAll() {
   if (!sb || !USER_ID) return;
   const [c, g, t] = await Promise.all([
@@ -1943,6 +2023,16 @@ async function pullAll() {
     decksTableMissing = true;
     const cd = cacheGet('presentations'); presentations = Array.isArray(cd) ? cd : [];
     console.warn('[presentations] table not ready yet:', e && e.message);
+  }
+  try {
+    const pres = await sb.from('preferences').select('data').eq('user_id', USER_ID);
+    if (pres.error) throw pres.error;
+    const prow = pres.data && pres.data[0];
+    if (prow && prow.data) applyPrefs(prow.data);
+    prefsTableMissing = false;
+  } catch (e) {
+    prefsTableMissing = true;
+    console.warn('[prefs] table not ready yet:', e && e.message);
   }
 }
 
@@ -1983,6 +2073,11 @@ async function flushCloudSave() {
       }
       dirty.presentations = false;
     }
+    if (dirty.prefs) {
+      try { await pushPrefs(); prefsTableMissing = false; }
+      catch (e) { prefsTableMissing = true; console.warn('[prefs] push failed:', e && e.message); }
+      dirty.prefs = false;
+    }
     lastPushAt = (window.performance ? performance.now() : Date.now());
     setSyncStatus('synced');
   } catch (e) {
@@ -2004,7 +2099,7 @@ function scheduleCloudSave(kind) {
 
 async function syncNow() {
   if (!sb || !USER_ID) return;
-  dirty.tasks = dirty.columns = dirty.groups = dirty.notes = dirty.presentations = true;
+  dirty.tasks = dirty.columns = dirty.groups = dirty.notes = dirty.presentations = dirty.prefs = true;
   await flushCloudSave();
 }
 
@@ -2198,7 +2293,7 @@ function renderNotes(board) {
     else if (nr) nr.remove();
   });
   const noteSortEl = document.getElementById('notes-sort');
-  if (noteSortEl) noteSortEl.addEventListener('change', () => { notesSort = noteSortEl.value; try { localStorage.setItem('tb_notes_sort', notesSort); } catch (e) {} renderBoard(); });
+  if (noteSortEl) noteSortEl.addEventListener('change', () => { notesSort = noteSortEl.value; try { localStorage.setItem('tb_notes_sort', notesSort); } catch (e) {} markPrefsDirty(); renderBoard(); });
   if (notesSort === 'manual') {
     board.querySelectorAll('.notes-items .note-item').forEach(it => {
       it.addEventListener('dragstart', e => { notesDragId = it.dataset.note; it.classList.add('dragging'); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; });
@@ -2649,7 +2744,7 @@ function renderPresentations(board) {
   const searchEl = document.getElementById('deck-search');
   if (searchEl) searchEl.addEventListener('input', () => { deckSearch = searchEl.value; updateList(); });
   const sortEl = document.getElementById('deck-sort');
-  if (sortEl) sortEl.addEventListener('change', () => { deckSort = sortEl.value; try { localStorage.setItem('tb_deck_sort', deckSort); } catch (e) {} updateList(); });
+  if (sortEl) sortEl.addEventListener('change', () => { deckSort = sortEl.value; try { localStorage.setItem('tb_deck_sort', deckSort); } catch (e) {} markPrefsDirty(); updateList(); });
 
   const titleEl = document.getElementById('deck-title');
   if (titleEl) titleEl.addEventListener('input', () => {
@@ -2855,8 +2950,8 @@ function exportNote(kind) {
   }
 }
 // --- graph node helpers (physics + per-node color/size/shape) ---
-function saveGraphNodes() { try { localStorage.setItem('tb_graph_nodes', JSON.stringify(graphNodeOverrides)); } catch (e) {} }
-function saveGraphPositions(nodes) { try { const o = {}; nodes.forEach(n => { o[n.id] = { x: Math.round(n.x), y: Math.round(n.y) }; }); graphPositions = o; localStorage.setItem('tb_graph_pos', JSON.stringify(o)); } catch (e) {} }
+function saveGraphNodes() { try { localStorage.setItem('tb_graph_nodes', JSON.stringify(graphNodeOverrides)); } catch (e) {} markPrefsDirty(); }
+function saveGraphPositions(nodes) { try { const o = {}; nodes.forEach(n => { o[n.id] = { x: Math.round(n.x), y: Math.round(n.y) }; }); graphPositions = o; localStorage.setItem('tb_graph_pos', JSON.stringify(o)); } catch (e) {} markPrefsDirty(); }
 function cancelGraphSim() { if (graphRaf) { cancelAnimationFrame(graphRaf); graphRaf = 0; } }
 function gOverride(id) { return graphNodeOverrides[id] || (graphNodeOverrides[id] = {}); }
 function gColor(id) { const o = graphNodeOverrides[id]; return (o && o.color) || graphNodeColor; }
@@ -3039,11 +3134,12 @@ function setupAccountMenu() {
         avatarUrl = url;
         try { localStorage.setItem('tb_' + USER_ID + '_avatar', url); } catch (err) { alert('Image too large.'); return; }
         refreshAccountMenu();
+        markPrefsDirty();
       });
     });
   }
   const rmBtn = document.getElementById('acct-photo-remove');
-  if (rmBtn) rmBtn.addEventListener('click', () => { menu.hidden = true; avatarUrl = ''; try { localStorage.removeItem('tb_' + USER_ID + '_avatar'); } catch (e) {} refreshAccountMenu(); });
+  if (rmBtn) rmBtn.addEventListener('click', () => { menu.hidden = true; avatarUrl = ''; try { localStorage.removeItem('tb_' + USER_ID + '_avatar'); } catch (e) {} refreshAccountMenu(); markPrefsDirty(); });
 }
 function refreshAccountMenu() {
   const em = document.getElementById('acct-email');
@@ -3090,6 +3186,7 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', t.id);
   document.documentElement.setAttribute('data-mode', t.dark ? 'dark' : 'light');
   try { localStorage.setItem(STORE_THEME, t.id); } catch (e) {}
+  markPrefsDirty();
   updateThemeActive();
 }
 function loadTheme() {
@@ -3283,6 +3380,7 @@ function openColumnsPopover() {
   pop.querySelectorAll('[data-colvis]').forEach(cb => cb.addEventListener('change', () => {
     if (cb.checked) hiddenCols.delete(cb.dataset.colvis); else hiddenCols.add(cb.dataset.colvis);
     try { localStorage.setItem('tb_hidden_cols', JSON.stringify([...hiddenCols])); } catch (e) {}
+    markPrefsDirty();
     renderBoard();
   }));
 }
@@ -3322,7 +3420,7 @@ function setupStaticUI() {
   document.addEventListener('click', e => { const b = e.target.closest('[data-setlang]'); if (b) { e.preventDefault(); setLang(b.getAttribute('data-setlang')); } });
   applySidebarState();
   const sideToggle = document.getElementById('sidebar-toggle');
-  if (sideToggle) sideToggle.addEventListener('click', () => { sidebarHidden = !sidebarHidden; try { localStorage.setItem('tb_sidebar_hidden', sidebarHidden ? '1' : '0'); } catch (e) {} applySidebarState(); });
+  if (sideToggle) sideToggle.addEventListener('click', () => { sidebarHidden = !sidebarHidden; try { localStorage.setItem('tb_sidebar_hidden', sidebarHidden ? '1' : '0'); } catch (e) {} markPrefsDirty(); applySidebarState(); });
   const colsBtn = document.getElementById('columns-btn');
   const colsPop = document.getElementById('columns-popover');
   if (colsBtn && colsPop) {
