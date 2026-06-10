@@ -3057,8 +3057,8 @@ function renderNotesGraph(board) {
   const linesSvg = edges.map(() => '<line class="graph-edge"/>').join('');
   const nodesSvg = nodes.map((n, i) => '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '" style="--ndelay:' + Math.min(i * 20, 500) + 'ms">' + gNodeInner(n) + '<title>' + escHtml(n.title) + '</title></g>').join('');
   const defs = '<defs>' +
-    '<marker id="garrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path class="garrow-p" d="M0,0L10,5L0,10z"/></marker>' +
-    '<marker id="garrowhl" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="garrowhl-p" d="M0,0L10,5L0,10z"/></marker>' +
+    '<marker id="garrow" viewBox="0 0 10 10" refX="0.4" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path class="garrow-p" d="M0,0L10,5L0,10z"/></marker>' +
+    '<marker id="garrowhl" viewBox="0 0 10 10" refX="0.4" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path class="garrowhl-p" d="M0,0L10,5L0,10z"/></marker>' +
     '</defs>';
   board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(stats) + '</span>' + focusChip + (nodes.length ? controls : '') + '</div>' +
     '<div class="graph-node-panel" id="graph-node-panel" hidden></div>' +
@@ -3113,7 +3113,13 @@ function renderNotesGraph(board) {
     edges.forEach((e, i) => {
       const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]], ln = lineEls[i]; if (!ln || !a || !b) return;
       let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
-      if (graphArrows) { const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 0.01, ux = dx / d, uy = dy / d; x1 += ux * (rOf(a) + 2); y1 += uy * (rOf(a) + 2); x2 -= ux * (rOf(b) + 5); y2 -= uy * (rOf(b) + 5); }
+      if (graphArrows) {
+        const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 0.01, ux = dx / d, uy = dy / d;
+        let offA = rOf(a) + 2, offB = rOf(b) + 10;
+        const room = d - 4;
+        if (offA + offB > room && room > 0) { const f = room / (offA + offB); offA *= f; offB *= f; }
+        x1 += ux * offA; y1 += uy * offA; x2 -= ux * offB; y2 -= uy * offB;
+      }
       ln.setAttribute('x1', x1.toFixed(1)); ln.setAttribute('y1', y1.toFixed(1)); ln.setAttribute('x2', x2.toFixed(1)); ln.setAttribute('y2', y2.toFixed(1));
     });
   }

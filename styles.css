@@ -1588,7 +1588,7 @@ body.personal .board-name::after {
 .graph-node.dragging-node .node-shape { filter: brightness(1.2) drop-shadow(0 6px 14px rgba(0,0,0,0.35)); }
 .graph-node.dragging-node text { opacity: 1; }
 /* direction arrows */
-.garrow-p { fill: var(--text-light); opacity: 0.55; }
+.garrow-p { fill: var(--border); }
 .garrowhl-p { fill: var(--purple); }
 /* search pill */
 .graph-search-wrap { gap: 6px; }
