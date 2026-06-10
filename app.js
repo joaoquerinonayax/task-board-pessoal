@@ -618,6 +618,7 @@ function renderBoard() {
   const board = document.getElementById('board');
   if (currentView === 'tickets' && USER_ROLE !== 'admin') currentView = 'kanban';
   board.className = 'board view-' + currentView + ((groupBy && currentView === 'cards') ? ' grouped' : '');
+  if (window.__lastView !== currentView) { window.__lastView = currentView; board.classList.add('view-swap'); }
   document.body.classList.toggle('notes-active', currentView === 'notes');
   document.body.classList.toggle('tickets-active', currentView === 'tickets');
   document.body.classList.toggle('analytics-active', currentView === 'analytics');
@@ -670,7 +671,7 @@ function renderKanban(board) {
   board.innerHTML = columns.filter(c => !hiddenCols.has(c.id)).map(c => {
     const items = byCol[c.id] || [];
     let cards;
-    if (!items.length) cards = '<div class="col-empty">' + escHtml(tr('col.empty')) + '</div>';
+    if (!items.length) cards = '<div class="col-empty"><i data-lucide="inbox"></i><span>' + escHtml(tr('col.empty')) + '</span></div>';
     else if (groupBy)  cards = renderGroupedCards(items, false, 'k:' + c.id);
     else               cards = items.map(t => cardHtml(t, false)).join('');
     return `
@@ -699,7 +700,7 @@ function renderKanban(board) {
 function renderCards(board) {
   const list = getFilteredSorted();
   if (!list.length) {
-    board.innerHTML = '<div class="table-empty">' + escHtml(tr('empty.noMatch')) + '</div>';
+    board.innerHTML = '<div class="table-empty"><i data-lucide="search-x"></i><span>' + escHtml(tr('empty.noMatch')) + '</span></div>';
     return;
   }
   if (groupBy) {
@@ -795,7 +796,7 @@ function openTaskModalWithDate(ds) {
 function renderTable(board) {
   const list = getFilteredSorted();
   if (!list.length) {
-    board.innerHTML = '<div class="table-empty">' + escHtml(tr('empty.noMatch')) + '</div>';
+    board.innerHTML = '<div class="table-empty"><i data-lucide="search-x"></i><span>' + escHtml(tr('empty.noMatch')) + '</span></div>';
     return;
   }
   const sortBy = document.getElementById('sort').value;
@@ -3183,6 +3184,12 @@ const THEMES = [
 ];
 function applyTheme(theme) {
   const t = THEMES.find(x => x.id === theme) || THEMES[0];
+  const root = document.documentElement;
+  if (root.getAttribute('data-theme') && root.getAttribute('data-theme') !== t.id) {
+    root.classList.add('theme-fade');
+    clearTimeout(window.__themeFadeT);
+    window.__themeFadeT = setTimeout(() => root.classList.remove('theme-fade'), 420);
+  }
   document.documentElement.setAttribute('data-theme', t.id);
   document.documentElement.setAttribute('data-mode', t.dark ? 'dark' : 'light');
   try { localStorage.setItem(STORE_THEME, t.id); } catch (e) {}
