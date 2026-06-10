@@ -1,6 +1,10 @@
 // ============================================================
 //  Storage keys
 // ============================================================
+// App variant: the same codebase serves the work board and the personal board.
+const IS_PERSONAL = !!(window.APP_VARIANT === 'personal'
+  || /task-board-pessoal/.test(location.pathname)
+  || /[?&]variant=personal/.test(location.search));
 // UI preferences kept in localStorage (not sensitive)
 const STORE_VIEW    = 'tb_view';
 const STORE_GROUPBY = 'tb_groupby';
@@ -1868,9 +1872,9 @@ function initSupabase() {
   const key = cfg.anonKey || cfg.publishableKey;   // accepts legacy anon OR new sb_publishable_ key
   if (!cfg.url || !key || /YOUR-/.test(cfg.url) || /YOUR-/.test(key)) return false;
   if (!window.supabase || !window.supabase.createClient) return false;
-  sb = window.supabase.createClient(cfg.url, key, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
+  const authOpts = { persistSession: true, autoRefreshToken: true };
+  if (IS_PERSONAL) authOpts.storageKey = 'sb-tb-personal-auth';
+  sb = window.supabase.createClient(cfg.url, key, { auth: authOpts });
   return true;
 }
 
@@ -3406,9 +3410,19 @@ function setupKeyboardShortcuts() {
 // ============================================================
 //  Boot
 // ============================================================
+function applyBrand() {
+  if (!IS_PERSONAL) return;
+  I18N.en['app.title'] = 'João Querino — Pessoal';
+  I18N['pt-BR']['app.title'] = 'João Querino — Pessoal';
+  const bn = document.querySelector('.board-name'); if (bn) bn.textContent = 'João Querino';
+  const ab = document.querySelector('.auth-brandname'); if (ab) ab.innerHTML = 'João Querino<span>Pessoal</span>';
+  document.body.classList.add('personal');
+  document.title = 'João Querino — Pessoal';
+}
 let booted = false;
 function setupStaticUI() {
   if (booted) return; booted = true;
+  applyBrand();
   loadLang();
   loadView();
   loadGroupBy();

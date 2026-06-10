@@ -1552,3 +1552,13 @@ body.slides-active #groupby-btn { display: none; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- Personal variant badge ---------- */
+body.personal .board-name::after {
+  content: 'Pessoal';
+  display: inline-block; margin-left: 8px; padding: 2px 9px;
+  border-radius: 999px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  background: var(--purple-soft); color: var(--purple);
+  vertical-align: 2px;
+}
