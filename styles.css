@@ -1562,3 +1562,57 @@ body.personal .board-name::after {
   background: var(--purple-soft); color: var(--purple);
   vertical-align: 2px;
 }
+
+/* ===============================================
+   GRAPH ULTRA — emphasis, search, physics, preview
+   =============================================== */
+/* staggered node entry (backwards fill so hover/dim transforms still apply after) */
+@keyframes gnode-in { from { opacity: 0; transform: scale(0); } 70% { transform: scale(1.14); } to { opacity: 1; transform: scale(1); } }
+@keyframes gfade-in { from { opacity: 0; } }
+.graph-node .node-shape { transform-box: fill-box; transform-origin: center; animation: gnode-in 0.45s cubic-bezier(0.34, 1.3, 0.5, 1) backwards; animation-delay: var(--ndelay, 0ms); transition: filter 0.12s ease, transform 0.15s ease; }
+.graph-node:hover .node-shape { transform: scale(1.12); }
+.graph-node text { transition: opacity 0.2s ease; animation: gfade-in 0.4s ease backwards; animation-delay: calc(var(--ndelay, 0ms) + 120ms); }
+.graph-edge { transition: opacity 0.25s ease, stroke 0.2s ease, stroke-width 0.2s ease; animation: gfade-in 0.5s ease backwards; animation-delay: 0.25s; }
+/* hover/search emphasis */
+.graph-node { transition: opacity 0.25s ease; }
+.graph-node.dim { opacity: 0.14; }
+.graph-node.hl text { opacity: 1; fill: var(--text); }
+.graph-edge.dim { opacity: 0.07; }
+.graph-edge.hl { stroke: var(--purple); stroke-width: 2.4; opacity: 0.95; }
+/* labels fade out when zoomed far away (hover/selection still shows them) */
+.graph-svg.labels-hidden .graph-node:not(:hover):not(.selected):not(.hl) text { opacity: 0; }
+/* selection pulse */
+@keyframes sel-pulse { 0%, 100% { stroke-opacity: 0.9; } 50% { stroke-opacity: 0.3; } }
+.graph-node.selected .node-shape { animation: sel-pulse 1.8s ease-in-out infinite; }
+/* dragging feedback */
+.graph-node.dragging-node .node-shape { filter: brightness(1.2) drop-shadow(0 6px 14px rgba(0,0,0,0.35)); }
+.graph-node.dragging-node text { opacity: 1; }
+/* direction arrows */
+.garrow-p { fill: var(--text-light); opacity: 0.55; }
+.garrowhl-p { fill: var(--purple); }
+/* search pill */
+.graph-search-wrap { gap: 6px; }
+.graph-search-wrap svg.lucide { width: 14px; height: 14px; color: var(--text-light); }
+.graph-search-wrap input { border: 0; background: transparent; font-family: inherit; font-size: 12.5px; color: var(--text); width: 130px; outline: none; }
+/* physics popover */
+.graph-phys-wrap { position: relative; }
+.graph-phys-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 80; background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 14px 40px -12px rgba(0,0,0,0.25); padding: 12px; min-width: 224px; display: flex; flex-direction: column; gap: 10px; animation: menu-in 0.16s ease-out both; }
+.graph-phys-menu[hidden] { display: none; }
+.gp-row { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--text-light); }
+.gp-row input[type="range"] { width: 100%; accent-color: var(--purple); }
+.gp-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); cursor: pointer; }
+.gp-check input { accent-color: var(--purple); cursor: pointer; }
+.gp-relayout { justify-content: center; }
+/* focus (local graph) chip */
+.graph-focus-chip { display: inline-flex; align-items: center; gap: 7px; background: var(--purple-soft); color: var(--purple); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 12px; font-weight: 700; }
+.graph-focus-chip svg.lucide { width: 13px; height: 13px; }
+.gfc-title { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.graph-focus-chip select { border: 0; background: transparent; color: var(--purple); font-weight: 700; font-family: inherit; cursor: pointer; font-size: 12px; }
+.gfc-x { border: 0; background: transparent; color: var(--purple); cursor: pointer; display: inline-flex; padding: 3px; border-radius: 50%; }
+.gfc-x:hover { background: rgba(0,0,0,0.10); }
+.gfc-x svg.lucide { width: 13px; height: 13px; }
+/* hover note preview card */
+.graph-preview { position: fixed; z-index: 300; width: 280px; max-height: 260px; overflow: hidden; background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 18px 50px -12px rgba(0,0,0,0.35); padding: 12px 14px; opacity: 0; transform: translateY(4px) scale(0.98); transition: opacity 0.18s ease, transform 0.18s ease; pointer-events: none; }
+.graph-preview.show { opacity: 1; transform: none; }
+.gpv-title { font-weight: 800; font-size: 13.5px; margin-bottom: 6px; color: var(--text); }
+.gpv-body { font-size: 12px; max-height: 200px; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent); mask-image: linear-gradient(180deg, #000 70%, transparent); }

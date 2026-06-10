@@ -69,6 +69,12 @@ let graphRaf = 0;
 let graphSelectedId = null;
 let graphNodeOverrides = (function(){ try { const o = JSON.parse(localStorage.getItem('tb_graph_nodes') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } })();
 let graphPositions = (function(){ try { const o = JSON.parse(localStorage.getItem('tb_graph_pos') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } })();
+let graphSearch = '';
+let graphFocusId = null;
+let graphFocusDepth = 1;
+let graphPhysics = (function(){ try { const o = JSON.parse(localStorage.getItem('tb_graph_phys') || 'null'); if (o && isFinite(o.repel) && isFinite(o.dist) && isFinite(o.grav)) return o; } catch (e) {} return { repel: 9000, dist: 100, grav: 20 }; })();
+let graphArrows = localStorage.getItem('tb_graph_arrows') === '1';
+function saveGraphPhys() { try { localStorage.setItem('tb_graph_phys', JSON.stringify(graphPhysics)); localStorage.setItem('tb_graph_arrows', graphArrows ? '1' : '0'); } catch (e) {} markPrefsDirty(); }
 let notesTableMissing = false;
 let presentations = [];
 let activeDeckId = null;
@@ -233,9 +239,9 @@ Object.assign(I18N.en, { 'theme.light':'Light','theme.dim':'Dim','theme.dark':'D
 Object.assign(I18N['pt-BR'], { 'theme.light':'Claro','theme.dim':'Suave','theme.dark':'Escuro','theme.midnight':'Meia-noite','theme.forest':'Floresta','theme.ocean':'Oceano','theme.rose':'Rosé' });
 Object.assign(I18N.en, { 'rt.table':'Table','table.insert':'Insert table','table.addRow':'Add row','table.addCol':'Add column','table.delRow':'Delete row','table.delCol':'Delete column','table.alignLeft':'Align left','table.alignCenter':'Align center','table.alignRight':'Align right' });
 Object.assign(I18N['pt-BR'], { 'rt.table':'Tabela','table.insert':'Inserir tabela','table.addRow':'Adicionar linha','table.addCol':'Adicionar coluna','table.delRow':'Excluir linha','table.delCol':'Excluir coluna','table.alignLeft':'Alinhar à esquerda','table.alignCenter':'Centralizar','table.alignRight':'Alinhar à direita' });
-Object.assign(I18N.en, { 'ins.btn':'Insert','ins.date':"Today's date",'ins.datetime':'Date & time','ins.tag':'Tag','ins.attr':'Attribute','ins.link':'Link to note…','ins.tagPrompt':'Tag name:','ins.attrPrompt':'Attribute name:','ins.linkTitle':'Link to a note','ins.linkPh':'Search notes…','exp.btn':'Export','exp.copy':'Copy to clipboard','exp.html':'Export as HTML','exp.pdf':'Export as PDF','exp.copied':'Copied!','exp.popup':'Allow pop-ups to export PDF.','graph.title':'Notes graph','graph.back':'Back to notes','graph.zoomIn':'Zoom in','graph.zoomOut':'Zoom out','graph.reset':'Reset view','graph.nodeSize':'Node size','graph.nodeColor':'Node color','graph.openNote':'Open note','graph.resetNode':'Reset','graph.smaller':'Smaller','graph.bigger':'Bigger' });
+Object.assign(I18N.en, { 'ins.btn':'Insert','ins.date':"Today's date",'ins.datetime':'Date & time','ins.tag':'Tag','ins.attr':'Attribute','ins.link':'Link to note…','ins.tagPrompt':'Tag name:','ins.attrPrompt':'Attribute name:','ins.linkTitle':'Link to a note','ins.linkPh':'Search notes…','exp.btn':'Export','exp.copy':'Copy to clipboard','exp.html':'Export as HTML','exp.pdf':'Export as PDF','exp.copied':'Copied!','exp.popup':'Allow pop-ups to export PDF.','graph.title':'Notes graph','graph.back':'Back to notes','graph.zoomIn':'Zoom in','graph.zoomOut':'Zoom out','graph.reset':'Reset view','graph.nodeSize':'Node size','graph.nodeColor':'Node color','graph.openNote':'Open note','graph.resetNode':'Reset','graph.smaller':'Smaller','graph.bigger':'Bigger','graph.physics':'Physics','graph.repel':'Repulsion','graph.dist':'Link distance','graph.grav':'Center pull','graph.arrows':'Direction arrows','graph.relayout':'Re-layout','graph.focus':'Focus','graph.exitFocus':'Exit focus','graph.notesWord':'notes','graph.linksWord':'links' });
 Object.assign(I18N.en, { 'notes.import':'Import Markdown','notes.search':'Search notes…','notes.sort.manual':'Manual order','notes.sort.title':'Title (A–Z)','notes.sort.newest':'Newest first','notes.sort.oldest':'Oldest first' });
-Object.assign(I18N['pt-BR'], { 'ins.btn':'Inserir','ins.date':'Data de hoje','ins.datetime':'Data e hora','ins.tag':'Tag','ins.attr':'Atributo','ins.link':'Linkar nota…','ins.tagPrompt':'Nome da tag:','ins.attrPrompt':'Nome do atributo:','ins.linkTitle':'Linkar a uma nota','ins.linkPh':'Buscar notas…','exp.btn':'Exportar','exp.copy':'Copiar para a área de transferência','exp.html':'Exportar como HTML','exp.pdf':'Exportar como PDF','exp.copied':'Copiado!','exp.popup':'Permita pop-ups para exportar o PDF.','graph.title':'Grafo de notas','graph.back':'Voltar às notas','graph.zoomIn':'Aproximar','graph.zoomOut':'Afastar','graph.reset':'Redefinir visão','graph.nodeSize':'Tamanho dos nodes','graph.nodeColor':'Cor dos nodes','graph.openNote':'Abrir nota','graph.resetNode':'Restaurar','graph.smaller':'Menor','graph.bigger':'Maior' });
+Object.assign(I18N['pt-BR'], { 'ins.btn':'Inserir','ins.date':'Data de hoje','ins.datetime':'Data e hora','ins.tag':'Tag','ins.attr':'Atributo','ins.link':'Linkar nota…','ins.tagPrompt':'Nome da tag:','ins.attrPrompt':'Nome do atributo:','ins.linkTitle':'Linkar a uma nota','ins.linkPh':'Buscar notas…','exp.btn':'Exportar','exp.copy':'Copiar para a área de transferência','exp.html':'Exportar como HTML','exp.pdf':'Exportar como PDF','exp.copied':'Copiado!','exp.popup':'Permita pop-ups para exportar o PDF.','graph.title':'Grafo de notas','graph.back':'Voltar às notas','graph.zoomIn':'Aproximar','graph.zoomOut':'Afastar','graph.reset':'Redefinir visão','graph.nodeSize':'Tamanho dos nodes','graph.nodeColor':'Cor dos nodes','graph.openNote':'Abrir nota','graph.resetNode':'Restaurar','graph.smaller':'Menor','graph.bigger':'Maior','graph.physics':'Física','graph.repel':'Repulsão','graph.dist':'Distância dos links','graph.grav':'Força central','graph.arrows':'Setas de direção','graph.relayout':'Reorganizar','graph.focus':'Focar','graph.exitFocus':'Sair do foco','graph.notesWord':'notas','graph.linksWord':'links' });
 Object.assign(I18N['pt-BR'], { 'notes.import':'Importar Markdown','notes.search':'Buscar notas…','notes.sort.manual':'Ordem manual','notes.sort.title':'Título (A–Z)','notes.sort.newest':'Mais recentes','notes.sort.oldest':'Mais antigas' });
 function localeFor() { return lang === 'pt-BR' ? 'pt-BR' : 'en-US'; }
 function tr(key) { const d = I18N[lang] || I18N.en; return d[key] != null ? d[key] : (I18N.en[key] != null ? I18N.en[key] : key); }
@@ -1932,6 +1938,8 @@ function collectPrefs() {
     graphNodeColor: graphNodeColor,
     graphNodes: graphNodeOverrides,
     graphPos: graphPositions,
+    graphPhysics: graphPhysics,
+    graphArrows: graphArrows,
     anConfig: anConfig,
     hiddenCols: [...hiddenCols],
     sidebarHidden: !!sidebarHidden,
@@ -1956,6 +1964,8 @@ function applyPrefs(p) {
     if (typeof p.graphNodeColor === 'string') graphNodeColor = p.graphNodeColor;
     if (p.graphNodes && typeof p.graphNodes === 'object') graphNodeOverrides = p.graphNodes;
     if (p.graphPos && typeof p.graphPos === 'object') graphPositions = p.graphPos;
+    if (p.graphPhysics && typeof p.graphPhysics === 'object' && isFinite(p.graphPhysics.repel)) graphPhysics = p.graphPhysics;
+    if (typeof p.graphArrows === 'boolean') graphArrows = p.graphArrows;
     if (p.anConfig && typeof p.anConfig === 'object') anConfig = p.anConfig;
     if (Array.isArray(p.hiddenCols)) hiddenCols = new Set(p.hiddenCols);
     if (typeof p.sidebarHidden === 'boolean') { sidebarHidden = p.sidebarHidden; applySidebarState(); }
@@ -1980,6 +1990,8 @@ function applyPrefs(p) {
       localStorage.setItem('tb_graph_color', graphNodeColor);
       localStorage.setItem('tb_graph_nodes', JSON.stringify(graphNodeOverrides));
       localStorage.setItem('tb_graph_pos', JSON.stringify(graphPositions));
+      localStorage.setItem('tb_graph_phys', JSON.stringify(graphPhysics));
+      localStorage.setItem('tb_graph_arrows', graphArrows ? '1' : '0');
       localStorage.setItem('tb_an_config', JSON.stringify(anConfig));
       localStorage.setItem('tb_hidden_cols', JSON.stringify([...hiddenCols]));
       localStorage.setItem('tb_sidebar_hidden', sidebarHidden ? '1' : '0');
@@ -2977,16 +2989,39 @@ function gNodeInner(node) { const r = node.baseR * gSize(node.id); return gShape
 
 function renderNotesGraph(board) {
   cancelGraphSim();
-  const nodes = notes.map(n => ({ id: n.id, title: n.title || tr('notes.untitled'), deg: 0, x: 0, y: 0, vx: 0, vy: 0, fx: 0, fy: 0, pinned: false, baseR: 8 }));
-  const idIndex = {}; nodes.forEach((n, i) => idIndex[n.id] = i);
+  // ---- build graph data ----
   const byTitle = {}; notes.forEach(n => { byTitle[(n.title || '').trim().toLowerCase()] = n.id; });
-  const edges = [];
+  const allEdges = []; const eSeen = new Set();
   notes.forEach(n => {
     const refs = (n.content || '').match(/\[\[([^\]|\n]+?)(?:\|[^\]\n]+?)?\]\]/g) || [];
-    refs.forEach(r => { const t = r.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim().toLowerCase(); const tid = byTitle[t]; if (tid && tid !== n.id) edges.push([n.id, tid]); });
+    refs.forEach(r => {
+      const t = r.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim().toLowerCase();
+      const tid = byTitle[t];
+      if (tid && tid !== n.id) { const k = n.id + '>' + tid; if (!eSeen.has(k)) { eSeen.add(k); allEdges.push([n.id, tid]); } }
+    });
   });
+  // local-graph (focus) subset: root + neighbors up to graphFocusDepth hops
+  let visibleIds = null;
+  if (graphFocusId && notes.find(n => n.id === graphFocusId)) {
+    visibleIds = new Set([graphFocusId]);
+    let frontier = [graphFocusId];
+    for (let d = 0; d < graphFocusDepth; d++) {
+      const next = [];
+      frontier.forEach(id => allEdges.forEach(e => {
+        if (e[0] === id && !visibleIds.has(e[1])) { visibleIds.add(e[1]); next.push(e[1]); }
+        if (e[1] === id && !visibleIds.has(e[0])) { visibleIds.add(e[0]); next.push(e[0]); }
+      }));
+      frontier = next;
+    }
+  } else { graphFocusId = null; }
+  const vNotes = visibleIds ? notes.filter(n => visibleIds.has(n.id)) : notes;
+  const edges = visibleIds ? allEdges.filter(e => visibleIds.has(e[0]) && visibleIds.has(e[1])) : allEdges;
+  const nodes = vNotes.map(n => ({ id: n.id, title: n.title || tr('notes.untitled'), deg: 0, x: 0, y: 0, vx: 0, vy: 0, fx: 0, fy: 0, pinned: false, baseR: 8, r: 8 }));
+  const idIndex = {}; nodes.forEach((n, i) => idIndex[n.id] = i);
   edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; if (a) a.deg++; if (b) b.deg++; });
-  nodes.forEach(n => { n.baseR = 8 + Math.min(14, n.deg * 2); });
+  nodes.forEach(n => { n.baseR = 8 + Math.min(14, n.deg * 2); n.r = n.baseR * gSize(n.id); });
+  const neighbors = {}; nodes.forEach(n => neighbors[n.id] = new Set());
+  edges.forEach(e => { if (neighbors[e[0]]) neighbors[e[0]].add(e[1]); if (neighbors[e[1]]) neighbors[e[1]].add(e[0]); });
   const W = 820, H = 560;
   nodes.forEach((n, i) => {
     const sp = graphPositions[n.id];
@@ -2994,7 +3029,10 @@ function renderNotesGraph(board) {
     else { const ang = (i / Math.max(1, nodes.length)) * Math.PI * 2; n.x = W / 2 + Math.cos(ang) * 170 + (i % 2 ? 18 : -18); n.y = H / 2 + Math.sin(ang) * 170; }
   });
   graphZoom = 1; graphPanX = 0; graphPanY = 0; graphSelectedId = null;
+
+  // ---- markup ----
   const controls = '<div class="graph-controls">' +
+    '<span class="graph-ctl-group graph-search-wrap"><i data-lucide="search"></i><input type="text" id="graph-search" placeholder="' + escHtml(tr('notes.search')) + '" value="' + escHtml(graphSearch) + '"></span>' +
     '<span class="graph-ctl-group">' +
       '<button class="icon-btn" data-gzoom="out" title="' + escHtml(tr('graph.zoomOut')) + '"><i data-lucide="minus"></i></button>' +
       '<button class="icon-btn" data-gzoom="in" title="' + escHtml(tr('graph.zoomIn')) + '"><i data-lucide="plus"></i></button>' +
@@ -3002,39 +3040,142 @@ function renderNotesGraph(board) {
     '</span>' +
     '<span class="graph-ctl-group graph-size" title="' + escHtml(tr('graph.nodeSize')) + '"><i data-lucide="circle"></i><input type="range" id="graph-size" min="0.5" max="2.5" step="0.1" value="' + graphNodeSize + '"></span>' +
     '<span class="graph-ctl-group graph-colors">' + GRAPH_COLORS.map(c => '<button class="graph-color-sw' + (c === graphNodeColor ? ' active' : '') + '" data-gcolor="' + c + '" style="background:' + c + '" title="' + escHtml(tr('graph.nodeColor')) + '"></button>').join('') + '</span>' +
+    '<span class="graph-ctl-group graph-phys-wrap"><button class="icon-btn" id="graph-phys-btn" title="' + escHtml(tr('graph.physics')) + '"><i data-lucide="settings-2"></i></button>' +
+      '<div class="graph-phys-menu" id="graph-phys-menu" hidden>' +
+        '<label class="gp-row"><span>' + escHtml(tr('graph.repel')) + '</span><input type="range" data-gphys="repel" min="1000" max="25000" step="500" value="' + graphPhysics.repel + '"></label>' +
+        '<label class="gp-row"><span>' + escHtml(tr('graph.dist')) + '</span><input type="range" data-gphys="dist" min="40" max="240" step="10" value="' + graphPhysics.dist + '"></label>' +
+        '<label class="gp-row"><span>' + escHtml(tr('graph.grav')) + '</span><input type="range" data-gphys="grav" min="0" max="60" step="2" value="' + graphPhysics.grav + '"></label>' +
+        '<label class="gp-check"><input type="checkbox" id="graph-arrows-cb"' + (graphArrows ? ' checked' : '') + '> ' + escHtml(tr('graph.arrows')) + '</label>' +
+        '<button class="btn-ghost gp-relayout" id="graph-relayout"><i data-lucide="shuffle"></i> ' + escHtml(tr('graph.relayout')) + '</button>' +
+      '</div></span>' +
     '</div>';
+  const focusNote = graphFocusId ? notes.find(n => n.id === graphFocusId) : null;
+  const focusChip = focusNote ? '<span class="graph-focus-chip"><i data-lucide="crosshair"></i><span class="gfc-title">' + escHtml(focusNote.title || tr('notes.untitled')) + '</span>' +
+    '<select id="graph-depth">' + [1, 2, 3].map(d => '<option value="' + d + '"' + (graphFocusDepth === d ? ' selected' : '') + '>' + d + '</option>').join('') + '</select>' +
+    '<button class="gfc-x" id="graph-unfocus" title="' + escHtml(tr('graph.exitFocus')) + '"><i data-lucide="x"></i></button></span>' : '';
+  const stats = nodes.length + ' ' + tr('graph.notesWord') + ' · ' + edges.length + ' ' + tr('graph.linksWord');
   const linesSvg = edges.map(() => '<line class="graph-edge"/>').join('');
-  const nodesSvg = nodes.map(n => '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '">' + gNodeInner(n) + '</g>').join('');
-  board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(tr('graph.title')) + ' · ' + nodes.length + '</span>' + (nodes.length ? controls : '') + '</div>' +
+  const nodesSvg = nodes.map((n, i) => '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '" style="--ndelay:' + Math.min(i * 20, 500) + 'ms">' + gNodeInner(n) + '<title>' + escHtml(n.title) + '</title></g>').join('');
+  const defs = '<defs>' +
+    '<marker id="garrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path class="garrow-p" d="M0,0L10,5L0,10z"/></marker>' +
+    '<marker id="garrowhl" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="garrowhl-p" d="M0,0L10,5L0,10z"/></marker>' +
+    '</defs>';
+  board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(stats) + '</span>' + focusChip + (nodes.length ? controls : '') + '</div>' +
     '<div class="graph-node-panel" id="graph-node-panel" hidden></div>' +
-    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet"><g id="graph-vp"><g class="graph-edges">' + linesSvg + '</g><g class="graph-nodes">' + nodesSvg + '</g></g></svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
-  const backBtn = document.getElementById('graph-back'); if (backBtn) backBtn.addEventListener('click', () => { cancelGraphSim(); saveGraphPositions(nodes); notesGraph = false; renderBoard(); });
+    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet">' + defs + '<g id="graph-vp"><g class="graph-edges">' + linesSvg + '</g><g class="graph-nodes">' + nodesSvg + '</g></g></svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
+  const backBtn = document.getElementById('graph-back');
   const svg = board.querySelector('.graph-svg'), vp = board.querySelector('#graph-vp');
+  if (backBtn) backBtn.addEventListener('click', () => { hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); notesGraph = false; renderBoard(); });
   if (!svg) { refreshIcons(); return; }
   const lineEls = [...svg.querySelectorAll('.graph-edge')];
   const nodeEls = {}; svg.querySelectorAll('.graph-node').forEach(g => { nodeEls[g.getAttribute('data-graph-note')] = g; });
 
-  function applyVp() { vp.setAttribute('transform', 'translate(' + graphPanX.toFixed(1) + ' ' + graphPanY.toFixed(1) + ') scale(' + graphZoom.toFixed(3) + ')'); }
-  function zoomAt(vbX, vbY, factor) { const nz = Math.max(0.3, Math.min(4, graphZoom * factor)); const wx = (vbX - graphPanX) / graphZoom, wy = (vbY - graphPanY) / graphZoom; graphPanX = vbX - wx * nz; graphPanY = vbY - wy * nz; graphZoom = nz; applyVp(); }
+  // ---- viewport, zoom (animated), labels ----
+  let zoomRaf = 0, zoomTargetZ = null;
+  function applyVp() {
+    vp.setAttribute('transform', 'translate(' + graphPanX.toFixed(1) + ' ' + graphPanY.toFixed(1) + ') scale(' + graphZoom.toFixed(3) + ')');
+    svg.classList.toggle('labels-hidden', graphZoom < 0.65);
+  }
+  function animateView(tz, tpx, tpy) {
+    cancelAnimationFrame(zoomRaf);
+    zoomTargetZ = tz;
+    const sz = graphZoom, sx = graphPanX, sy = graphPanY, t0 = performance.now(), dur = 240;
+    function stepv(now) {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      graphZoom = sz + (tz - sz) * e; graphPanX = sx + (tpx - sx) * e; graphPanY = sy + (tpy - sy) * e; applyVp();
+      if (k < 1) zoomRaf = requestAnimationFrame(stepv);
+      else zoomTargetZ = null;
+    }
+    zoomRaf = requestAnimationFrame(stepv);
+  }
+  function zoomAt(vbX, vbY, factor, animate) {
+    const base = (animate && zoomTargetZ != null) ? zoomTargetZ : graphZoom;
+    const nz = Math.max(0.3, Math.min(4, base * factor));
+    const wx = (vbX - graphPanX) / graphZoom, wy = (vbY - graphPanY) / graphZoom;
+    const tpx = vbX - wx * nz, tpy = vbY - wy * nz;
+    if (animate) animateView(nz, tpx, tpy);
+    else { graphZoom = nz; graphPanX = tpx; graphPanY = tpy; applyVp(); }
+  }
+  function fitView() {
+    if (!nodes.length) return;
+    let mnx = 1e9, mny = 1e9, mxx = -1e9, mxy = -1e9;
+    nodes.forEach(n => { mnx = Math.min(mnx, n.x - 70); mny = Math.min(mny, n.y - 70); mxx = Math.max(mxx, n.x + 70); mxy = Math.max(mxy, n.y + 70); });
+    const z = Math.max(0.35, Math.min(1.5, Math.min(W / Math.max(1, mxx - mnx), H / Math.max(1, mxy - mny))));
+    const cx = (mnx + mxx) / 2, cy = (mny + mxy) / 2;
+    animateView(z, W / 2 - cx * z, H / 2 - cy * z);
+  }
   function clientToWorld(cx, cy) { const rect = svg.getBoundingClientRect(); const vbX = (cx - rect.left) / rect.width * W, vbY = (cy - rect.top) / rect.height * H; return { x: (vbX - graphPanX) / graphZoom, y: (vbY - graphPanY) / graphZoom }; }
+
+  // ---- painting (with optional arrow shortening) ----
+  function rOf(n) { return n.r || 10; }
   function paintPositions() {
     nodes.forEach(n => { const g = nodeEls[n.id]; if (g) g.setAttribute('transform', 'translate(' + n.x.toFixed(1) + ',' + n.y.toFixed(1) + ')'); });
-    edges.forEach((e, i) => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]], ln = lineEls[i]; if (ln && a && b) { ln.setAttribute('x1', a.x.toFixed(1)); ln.setAttribute('y1', a.y.toFixed(1)); ln.setAttribute('x2', b.x.toFixed(1)); ln.setAttribute('y2', b.y.toFixed(1)); } });
+    edges.forEach((e, i) => {
+      const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]], ln = lineEls[i]; if (!ln || !a || !b) return;
+      let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+      if (graphArrows) { const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 0.01, ux = dx / d, uy = dy / d; x1 += ux * (rOf(a) + 2); y1 += uy * (rOf(a) + 2); x2 -= ux * (rOf(b) + 5); y2 -= uy * (rOf(b) + 5); }
+      ln.setAttribute('x1', x1.toFixed(1)); ln.setAttribute('y1', y1.toFixed(1)); ln.setAttribute('x2', x2.toFixed(1)); ln.setAttribute('y2', y2.toFixed(1));
+    });
   }
-  applyVp(); paintPositions();
+  function setArrowMarkers() { lineEls.forEach(ln => { if (graphArrows) ln.setAttribute('marker-end', 'url(#garrow)'); else ln.removeAttribute('marker-end'); }); paintPositions(); }
 
+  // ---- emphasis: hover/selection neighborhood + search ----
+  let hoverId = null;
+  function applyEmphasis() {
+    const q = graphSearch.trim().toLowerCase();
+    const focus = hoverId || graphSelectedId;
+    nodes.forEach(n => {
+      const g = nodeEls[n.id]; if (!g) return;
+      let st = 'norm';
+      if (focus) st = (n.id === focus || (neighbors[focus] && neighbors[focus].has(n.id))) ? 'hl' : 'dim';
+      if (q) { const m = n.title.toLowerCase().includes(q); if (!m) st = 'dim'; else if (st === 'norm') st = 'hl'; }
+      g.classList.toggle('dim', st === 'dim');
+      g.classList.toggle('hl', st === 'hl');
+    });
+    edges.forEach((e, i) => {
+      const ln = lineEls[i]; if (!ln) return;
+      let st = 'norm';
+      if (focus) st = (e[0] === focus || e[1] === focus) ? 'hl' : 'dim';
+      else if (q) st = 'dim';
+      ln.classList.toggle('dim', st === 'dim');
+      ln.classList.toggle('hl', st === 'hl');
+      if (graphArrows) ln.setAttribute('marker-end', st === 'hl' ? 'url(#garrowhl)' : 'url(#garrow)');
+    });
+  }
+
+  // ---- hover note preview (floating card) ----
+  let pvTimer = 0, pvEl = null;
+  function showPreview(id, cx, cy) {
+    const note = notes.find(n => n.id === id); if (!note) return;
+    hidePreview();
+    pvEl = document.createElement('div'); pvEl.className = 'graph-preview';
+    pvEl.innerHTML = '<div class="gpv-title">' + escHtml(note.title || tr('notes.untitled')) + '</div><div class="gpv-body md-body">' + renderMarkdown((note.content || '').slice(0, 600)) + '</div>';
+    document.body.appendChild(pvEl);
+    requestAnimationFrame(() => {
+      if (!pvEl) return;
+      const pw = pvEl.offsetWidth, ph = pvEl.offsetHeight;
+      let x = cx + 16, y = cy + 12;
+      if (x + pw > window.innerWidth - 8) x = cx - pw - 16;
+      if (y + ph > window.innerHeight - 8) y = Math.max(8, window.innerHeight - ph - 8);
+      pvEl.style.left = x + 'px'; pvEl.style.top = y + 'px'; pvEl.classList.add('show');
+    });
+  }
+  function hidePreview() { clearTimeout(pvTimer); pvTimer = 0; if (pvEl) { pvEl.remove(); pvEl = null; } }
+
+  // ---- physics ----
   let dragId = null, mode = null, movedFlag = false, sx = 0, sy = 0, panLX = 0, panLY = 0;
   let alpha = 0.9;
   function step() {
+    const REP = graphPhysics.repel, DIST = graphPhysics.dist, GRAV = graphPhysics.grav / 1000;
     const n = nodes.length;
     for (let i = 0; i < n; i++) { nodes[i].fx = 0; nodes[i].fy = 0; }
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
       let dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y, d2 = dx * dx + dy * dy; if (d2 < 25) d2 = 25;
-      const d = Math.sqrt(d2), f = 9000 / d2, ux = dx / d, uy = dy / d;
+      const d = Math.sqrt(d2), f = REP / d2, ux = dx / d, uy = dy / d;
       nodes[i].fx += ux * f; nodes[i].fy += uy * f; nodes[j].fx -= ux * f; nodes[j].fy -= uy * f;
     }
-    edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = (d - 100) * 0.05, ux = dx / d, uy = dy / d; a.fx += ux * f; a.fy += uy * f; b.fx -= ux * f; b.fy -= uy * f; });
-    nodes.forEach(nn => { nn.fx += (W / 2 - nn.x) * 0.02; nn.fy += (H / 2 - nn.y) * 0.02; });
+    edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = (d - DIST) * 0.05, ux = dx / d, uy = dy / d; a.fx += ux * f; a.fy += uy * f; b.fx -= ux * f; b.fy -= uy * f; });
+    nodes.forEach(nn => { nn.fx += (W / 2 - nn.x) * GRAV; nn.fy += (H / 2 - nn.y) * GRAV; });
     nodes.forEach(nn => { if (nn.pinned) { nn.vx = 0; nn.vy = 0; return; } nn.vx = (nn.vx + nn.fx) * 0.8; nn.vy = (nn.vy + nn.fy) * 0.8; nn.vx = Math.max(-45, Math.min(45, nn.vx)); nn.vy = Math.max(-45, Math.min(45, nn.vy)); nn.x += nn.vx * alpha; nn.y += nn.vy * alpha; });
   }
   function tick() {
@@ -3046,8 +3187,9 @@ function renderNotesGraph(board) {
   }
   function ensureLoop() { if (!graphRaf) graphRaf = requestAnimationFrame(tick); }
 
-  function deselectNode() { graphSelectedId = null; Object.keys(nodeEls).forEach(k => nodeEls[k].classList.remove('selected')); const p = document.getElementById('graph-node-panel'); if (p) { p.hidden = true; p.innerHTML = ''; } }
-  function selectNode(id) { graphSelectedId = id; Object.keys(nodeEls).forEach(k => nodeEls[k].classList.toggle('selected', k === id)); renderNodePanel(nodes[idIndex[id]]); }
+  // ---- node panel ----
+  function deselectNode() { graphSelectedId = null; Object.keys(nodeEls).forEach(k => nodeEls[k].classList.remove('selected')); const p = document.getElementById('graph-node-panel'); if (p) { p.hidden = true; p.innerHTML = ''; } applyEmphasis(); }
+  function selectNode(id) { hidePreview(); graphSelectedId = id; Object.keys(nodeEls).forEach(k => nodeEls[k].classList.toggle('selected', k === id)); renderNodePanel(nodes[idIndex[id]]); applyEmphasis(); }
   function renderNodePanel(node) {
     const panel = document.getElementById('graph-node-panel'); if (!panel || !node) return;
     const shapes = ['circle', 'square', 'triangle', 'diamond', 'hexagon', 'star'];
@@ -3057,28 +3199,49 @@ function renderNotesGraph(board) {
       '<span class="gnp-group"><button class="icon-btn" data-np-size="-1" title="' + escHtml(tr('graph.smaller')) + '"><i data-lucide="minus"></i></button><button class="icon-btn" data-np-size="1" title="' + escHtml(tr('graph.bigger')) + '"><i data-lucide="plus"></i></button></span>' +
       '<span class="gnp-group gnp-shapes">' + shapes.map(sh => '<button class="gnp-shape' + (gShape(node.id) === sh ? ' active' : '') + '" data-np-shape="' + sh + '" title="' + sh + '"><svg viewBox="-11 -11 22 22" width="17" height="17">' + gShapeMarkup(sh, 8, 'currentColor') + '</svg></button>').join('') + '</span>' +
       '<span class="graph-ctl-sep"></span>' +
+      '<button class="btn-ghost" data-np-focus><i data-lucide="crosshair"></i> <span>' + escHtml(tr('graph.focus')) + '</span></button>' +
       '<button class="btn-ghost" data-np-open><i data-lucide="external-link"></i> <span>' + escHtml(tr('graph.openNote')) + '</span></button>' +
       '<button class="btn-ghost" data-np-reset>' + escHtml(tr('graph.resetNode')) + '</button>' +
       '<button class="icon-btn" data-np-close><i data-lucide="x"></i></button>';
     panel.hidden = false;
-    const repaint = () => { const g = nodeEls[node.id]; if (g) g.innerHTML = gNodeInner(node); };
+    const repaint = () => { const g = nodeEls[node.id]; if (g) g.innerHTML = gNodeInner(node) + '<title>' + escHtml(node.title) + '</title>'; };
     panel.querySelectorAll('[data-np-color]').forEach(b => b.addEventListener('click', () => { gOverride(node.id).color = b.dataset.npColor; saveGraphNodes(); repaint(); panel.querySelectorAll('[data-np-color]').forEach(x => x.classList.toggle('active', x === b)); }));
-    panel.querySelectorAll('[data-np-size]').forEach(b => b.addEventListener('click', () => { const next = Math.max(0.5, Math.min(3, gSize(node.id) + parseInt(b.dataset.npSize, 10) * 0.25)); gOverride(node.id).size = next; saveGraphNodes(); repaint(); }));
+    panel.querySelectorAll('[data-np-size]').forEach(b => b.addEventListener('click', () => { const next = Math.max(0.5, Math.min(3, gSize(node.id) + parseInt(b.dataset.npSize, 10) * 0.25)); gOverride(node.id).size = next; saveGraphNodes(); node.r = node.baseR * next; repaint(); paintPositions(); }));
     panel.querySelectorAll('[data-np-shape]').forEach(b => b.addEventListener('click', () => { gOverride(node.id).shape = b.dataset.npShape; saveGraphNodes(); repaint(); panel.querySelectorAll('[data-np-shape]').forEach(x => x.classList.toggle('active', x === b)); }));
-    const op = panel.querySelector('[data-np-open]'); if (op) op.addEventListener('click', () => { cancelGraphSim(); saveGraphPositions(nodes); activeNoteId = node.id; notesGraph = false; renderBoard(); });
-    const rs = panel.querySelector('[data-np-reset]'); if (rs) rs.addEventListener('click', () => { delete graphNodeOverrides[node.id]; saveGraphNodes(); repaint(); renderNodePanel(node); });
+    const fc = panel.querySelector('[data-np-focus]'); if (fc) fc.addEventListener('click', () => { hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); graphFocusId = node.id; renderBoard(); });
+    const op = panel.querySelector('[data-np-open]'); if (op) op.addEventListener('click', () => { hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); activeNoteId = node.id; notesGraph = false; renderBoard(); });
+    const rs = panel.querySelector('[data-np-reset]'); if (rs) rs.addEventListener('click', () => { delete graphNodeOverrides[node.id]; saveGraphNodes(); node.r = node.baseR * gSize(node.id); repaint(); paintPositions(); renderNodePanel(node); });
     const cl = panel.querySelector('[data-np-close]'); if (cl) cl.addEventListener('click', deselectNode);
     refreshIcons();
   }
-  ensureLoop();
 
-  svg.addEventListener('wheel', e => { e.preventDefault(); const rect = svg.getBoundingClientRect(); zoomAt((e.clientX - rect.left) / rect.width * W, (e.clientY - rect.top) / rect.height * H, e.deltaY < 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+  // ---- initial paint ----
+  applyVp(); setArrowMarkers(); applyEmphasis(); ensureLoop();
+  setTimeout(fitView, 80);
+
+  // ---- pointer interactions ----
+  svg.addEventListener('wheel', e => { e.preventDefault(); hidePreview(); const rect = svg.getBoundingClientRect(); zoomAt((e.clientX - rect.left) / rect.width * W, (e.clientY - rect.top) / rect.height * H, e.deltaY < 0 ? 1.12 : 1 / 1.12, false); }, { passive: false });
+  svg.addEventListener('pointerover', e => {
+    if (mode) return;
+    const g = e.target.closest('.graph-node'); if (!g) return;
+    const id = g.getAttribute('data-graph-note');
+    if (hoverId !== id) { hoverId = id; applyEmphasis(); }
+    clearTimeout(pvTimer);
+    pvTimer = setTimeout(() => showPreview(id, e.clientX, e.clientY), 550);
+  });
+  svg.addEventListener('pointerout', e => {
+    if (mode) return;
+    const g = e.target.closest('.graph-node'); if (!g) return;
+    if (hoverId === g.getAttribute('data-graph-note')) { hoverId = null; applyEmphasis(); }
+    hidePreview();
+  });
   svg.addEventListener('pointerdown', e => {
+    hidePreview();
     try { svg.setPointerCapture(e.pointerId); } catch (er) {}
     sx = e.clientX; sy = e.clientY; movedFlag = false;
     const ng = e.target.closest('.graph-node');
-    if (ng) { mode = 'node'; dragId = ng.getAttribute('data-graph-note'); }
-    else { mode = 'pan'; panLX = e.clientX; panLY = e.clientY; svg.classList.add('grabbing'); }
+    if (ng) { mode = 'node'; dragId = ng.getAttribute('data-graph-note'); ng.classList.add('dragging-node'); }
+    else { mode = 'pan'; panLX = e.clientX; panLY = e.clientY; svg.classList.add('grabbing'); const m = document.getElementById('graph-phys-menu'); if (m) m.hidden = true; }
   });
   svg.addEventListener('pointermove', e => {
     if (mode === 'pan') { const rect = svg.getBoundingClientRect(); graphPanX += (e.clientX - panLX) / rect.width * W; graphPanY += (e.clientY - panLY) / rect.height * H; panLX = e.clientX; panLY = e.clientY; applyVp(); return; }
@@ -3091,6 +3254,7 @@ function renderNotesGraph(board) {
     }
   });
   function endPointer() {
+    svg.querySelectorAll('.dragging-node').forEach(g => g.classList.remove('dragging-node'));
     if (mode === 'node' && dragId) {
       const nd = nodes[idIndex[dragId]];
       if (!movedFlag) { selectNode(dragId); }
@@ -3100,15 +3264,33 @@ function renderNotesGraph(board) {
   }
   svg.addEventListener('pointerup', endPointer);
   svg.addEventListener('pointercancel', endPointer);
-  svg.addEventListener('dblclick', e => { const ng = e.target.closest('.graph-node'); if (ng) { cancelGraphSim(); saveGraphPositions(nodes); activeNoteId = ng.getAttribute('data-graph-note'); notesGraph = false; renderBoard(); } });
+  svg.addEventListener('dblclick', e => {
+    const ng = e.target.closest('.graph-node');
+    if (ng) { hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); activeNoteId = ng.getAttribute('data-graph-note'); notesGraph = false; renderBoard(); }
+    else { const rect = svg.getBoundingClientRect(); zoomAt((e.clientX - rect.left) / rect.width * W, (e.clientY - rect.top) / rect.height * H, 1.5, true); }
+  });
 
+  // ---- header controls ----
   const zb = sel => board.querySelector('[data-gzoom="' + sel + '"]');
-  if (zb('in')) zb('in').addEventListener('click', () => zoomAt(W / 2, H / 2, 1.2));
-  if (zb('out')) zb('out').addEventListener('click', () => zoomAt(W / 2, H / 2, 1 / 1.2));
-  if (zb('reset')) zb('reset').addEventListener('click', () => { graphZoom = 1; graphPanX = 0; graphPanY = 0; applyVp(); });
+  if (zb('in')) zb('in').addEventListener('click', () => zoomAt(W / 2, H / 2, 1.35, true));
+  if (zb('out')) zb('out').addEventListener('click', () => zoomAt(W / 2, H / 2, 1 / 1.35, true));
+  if (zb('reset')) zb('reset').addEventListener('click', fitView);
+  const searchEl = document.getElementById('graph-search');
+  if (searchEl) searchEl.addEventListener('input', () => { graphSearch = searchEl.value; applyEmphasis(); });
   const sizeEl = document.getElementById('graph-size');
-  if (sizeEl) sizeEl.addEventListener('input', () => { graphNodeSize = parseFloat(sizeEl.value) || 1; saveGraphPrefs(); nodes.forEach(nd => { if (!(graphNodeOverrides[nd.id] && graphNodeOverrides[nd.id].size)) { const g = nodeEls[nd.id]; if (g) g.innerHTML = gNodeInner(nd); } }); });
-  board.querySelectorAll('[data-gcolor]').forEach(b => b.addEventListener('click', () => { graphNodeColor = b.dataset.gcolor; saveGraphPrefs(); board.querySelectorAll('[data-gcolor]').forEach(x => x.classList.toggle('active', x === b)); nodes.forEach(nd => { if (!(graphNodeOverrides[nd.id] && graphNodeOverrides[nd.id].color)) { const g = nodeEls[nd.id]; if (g) g.innerHTML = gNodeInner(nd); } }); }));
+  if (sizeEl) sizeEl.addEventListener('input', () => { graphNodeSize = parseFloat(sizeEl.value) || 1; saveGraphPrefs(); nodes.forEach(nd => { if (!(graphNodeOverrides[nd.id] && graphNodeOverrides[nd.id].size)) { nd.r = nd.baseR * graphNodeSize; const g = nodeEls[nd.id]; if (g) g.innerHTML = gNodeInner(nd) + '<title>' + escHtml(nd.title) + '</title>'; } }); paintPositions(); });
+  board.querySelectorAll('[data-gcolor]').forEach(b => b.addEventListener('click', () => { graphNodeColor = b.dataset.gcolor; saveGraphPrefs(); board.querySelectorAll('[data-gcolor]').forEach(x => x.classList.toggle('active', x === b)); nodes.forEach(nd => { if (!(graphNodeOverrides[nd.id] && graphNodeOverrides[nd.id].color)) { const g = nodeEls[nd.id]; if (g) g.innerHTML = gNodeInner(nd) + '<title>' + escHtml(nd.title) + '</title>'; } }); }));
+  const physBtn = document.getElementById('graph-phys-btn'), physMenu = document.getElementById('graph-phys-menu');
+  if (physBtn && physMenu) physBtn.addEventListener('click', e => { e.stopPropagation(); physMenu.hidden = !physMenu.hidden; });
+  board.querySelectorAll('[data-gphys]').forEach(sl => sl.addEventListener('input', () => { graphPhysics[sl.dataset.gphys] = parseFloat(sl.value); saveGraphPhys(); alpha = Math.max(alpha, 0.5); ensureLoop(); }));
+  const arrowsCb = document.getElementById('graph-arrows-cb');
+  if (arrowsCb) arrowsCb.addEventListener('change', () => { graphArrows = arrowsCb.checked; saveGraphPhys(); setArrowMarkers(); applyEmphasis(); });
+  const relayoutBtn = document.getElementById('graph-relayout');
+  if (relayoutBtn) relayoutBtn.addEventListener('click', () => { nodes.forEach(nd => { const ang = Math.random() * Math.PI * 2, rad = 60 + Math.random() * 180; nd.x = W / 2 + Math.cos(ang) * rad; nd.y = H / 2 + Math.sin(ang) * rad; nd.vx = 0; nd.vy = 0; }); alpha = 1; ensureLoop(); setTimeout(fitView, 700); });
+  const depthSel = document.getElementById('graph-depth');
+  if (depthSel) depthSel.addEventListener('change', () => { graphFocusDepth = parseInt(depthSel.value, 10) || 1; hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); renderBoard(); });
+  const unfocusBtn = document.getElementById('graph-unfocus');
+  if (unfocusBtn) unfocusBtn.addEventListener('click', () => { graphFocusId = null; hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); renderBoard(); });
   refreshIcons();
 }
 
