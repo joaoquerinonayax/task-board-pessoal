@@ -2991,15 +2991,26 @@ function renderNotesGraph(board) {
   cancelGraphSim();
   // ---- build graph data ----
   const byTitle = {}; notes.forEach(n => { byTitle[(n.title || '').trim().toLowerCase()] = n.id; });
-  const allEdges = []; const eSeen = new Set();
+  const dirEdges = []; const eSeen = new Set();
   notes.forEach(n => {
     const refs = (n.content || '').match(/\[\[([^\]|\n]+?)(?:\|[^\]\n]+?)?\]\]/g) || [];
     refs.forEach(r => {
       const t = r.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim().toLowerCase();
       const tid = byTitle[t];
-      if (tid && tid !== n.id) { const k = n.id + '>' + tid; if (!eSeen.has(k)) { eSeen.add(k); allEdges.push([n.id, tid]); } }
+      if (tid && tid !== n.id) { const k = n.id + '>' + tid; if (!eSeen.has(k)) { eSeen.add(k); dirEdges.push([n.id, tid]); } }
     });
   });
+  // one undirected pair per connection, with direction flags (ab: a->b, ba: b->a)
+  const pairMap = {};
+  dirEdges.forEach(e => {
+    const k = e[0] < e[1] ? e[0] + '|' + e[1] : e[1] + '|' + e[0];
+    let p = pairMap[k];
+    if (!p) { const parts = k.split('|'); p = pairMap[k] = { a: parts[0], b: parts[1], ab: false, ba: false }; }
+    if (e[0] === p.a) p.ab = true; else p.ba = true;
+  });
+  const pairsAll = Object.keys(pairMap).map(k => pairMap[k]);
+  const nbAll = {}; notes.forEach(n => { nbAll[n.id] = new Set(); });
+  pairsAll.forEach(p => { if (nbAll[p.a]) nbAll[p.a].add(p.b); if (nbAll[p.b]) nbAll[p.b].add(p.a); });
   // local-graph (focus) subset: root + neighbors up to graphFocusDepth hops
   let visibleIds = null;
   if (graphFocusId && notes.find(n => n.id === graphFocusId)) {
@@ -3007,21 +3018,18 @@ function renderNotesGraph(board) {
     let frontier = [graphFocusId];
     for (let d = 0; d < graphFocusDepth; d++) {
       const next = [];
-      frontier.forEach(id => allEdges.forEach(e => {
-        if (e[0] === id && !visibleIds.has(e[1])) { visibleIds.add(e[1]); next.push(e[1]); }
-        if (e[1] === id && !visibleIds.has(e[0])) { visibleIds.add(e[0]); next.push(e[0]); }
-      }));
+      frontier.forEach(id => { (nbAll[id] || new Set()).forEach(nid => { if (!visibleIds.has(nid)) { visibleIds.add(nid); next.push(nid); } }); });
       frontier = next;
     }
   } else { graphFocusId = null; }
   const vNotes = visibleIds ? notes.filter(n => visibleIds.has(n.id)) : notes;
-  const edges = visibleIds ? allEdges.filter(e => visibleIds.has(e[0]) && visibleIds.has(e[1])) : allEdges;
+  const pairs = visibleIds ? pairsAll.filter(p => visibleIds.has(p.a) && visibleIds.has(p.b)) : pairsAll;
   const nodes = vNotes.map(n => ({ id: n.id, title: n.title || tr('notes.untitled'), deg: 0, x: 0, y: 0, vx: 0, vy: 0, fx: 0, fy: 0, pinned: false, baseR: 8, r: 8 }));
   const idIndex = {}; nodes.forEach((n, i) => idIndex[n.id] = i);
-  edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; if (a) a.deg++; if (b) b.deg++; });
+  pairs.forEach(p => { const a = nodes[idIndex[p.a]], b = nodes[idIndex[p.b]]; if (a) a.deg++; if (b) b.deg++; });
   nodes.forEach(n => { n.baseR = 8 + Math.min(14, n.deg * 2); n.r = n.baseR * gSize(n.id); });
   const neighbors = {}; nodes.forEach(n => neighbors[n.id] = new Set());
-  edges.forEach(e => { if (neighbors[e[0]]) neighbors[e[0]].add(e[1]); if (neighbors[e[1]]) neighbors[e[1]].add(e[0]); });
+  pairs.forEach(p => { if (neighbors[p.a]) neighbors[p.a].add(p.b); if (neighbors[p.b]) neighbors[p.b].add(p.a); });
   const W = 820, H = 560;
   nodes.forEach((n, i) => {
     const sp = graphPositions[n.id];
@@ -3053,21 +3061,17 @@ function renderNotesGraph(board) {
   const focusChip = focusNote ? '<span class="graph-focus-chip"><i data-lucide="crosshair"></i><span class="gfc-title">' + escHtml(focusNote.title || tr('notes.untitled')) + '</span>' +
     '<select id="graph-depth">' + [1, 2, 3].map(d => '<option value="' + d + '"' + (graphFocusDepth === d ? ' selected' : '') + '>' + d + '</option>').join('') + '</select>' +
     '<button class="gfc-x" id="graph-unfocus" title="' + escHtml(tr('graph.exitFocus')) + '"><i data-lucide="x"></i></button></span>' : '';
-  const stats = nodes.length + ' ' + tr('graph.notesWord') + ' · ' + edges.length + ' ' + tr('graph.linksWord');
-  const linesSvg = edges.map(() => '<line class="graph-edge"/>').join('');
+  const stats = nodes.length + ' ' + tr('graph.notesWord') + ' · ' + pairs.length + ' ' + tr('graph.linksWord');
+  const linesSvg = pairs.map(() => '<g class="graph-edge-g"><line class="graph-edge"/><polygon class="garrow ga-end" points=""/><polygon class="garrow ga-start" points=""/></g>').join('');
   const nodesSvg = nodes.map((n, i) => '<g class="graph-node" data-graph-note="' + escHtml(n.id) + '" style="--ndelay:' + Math.min(i * 20, 500) + 'ms">' + gNodeInner(n) + '<title>' + escHtml(n.title) + '</title></g>').join('');
-  const defs = '<defs>' +
-    '<marker id="garrow" viewBox="0 0 10 10" refX="0.4" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path class="garrow-p" d="M0,0L10,5L0,10z"/></marker>' +
-    '<marker id="garrowhl" viewBox="0 0 10 10" refX="0.4" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path class="garrowhl-p" d="M0,0L10,5L0,10z"/></marker>' +
-    '</defs>';
   board.innerHTML = '<div class="graph-wrap"><div class="graph-head"><button class="btn-ghost" id="graph-back"><i data-lucide="arrow-left"></i> <span>' + escHtml(tr('graph.back')) + '</span></button><span class="graph-title">' + escHtml(stats) + '</span>' + focusChip + (nodes.length ? controls : '') + '</div>' +
     '<div class="graph-node-panel" id="graph-node-panel" hidden></div>' +
-    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet">' + defs + '<g id="graph-vp"><g class="graph-edges">' + linesSvg + '</g><g class="graph-nodes">' + nodesSvg + '</g></g></svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
+    (nodes.length ? '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graph-svg" preserveAspectRatio="xMidYMid meet"><g id="graph-vp"><g class="graph-edges">' + linesSvg + '</g><g class="graph-nodes">' + nodesSvg + '</g></g></svg>' : '<div class="notes-empty">' + escHtml(tr('notes.empty')) + '</div>') + '</div>';
   const backBtn = document.getElementById('graph-back');
   const svg = board.querySelector('.graph-svg'), vp = board.querySelector('#graph-vp');
   if (backBtn) backBtn.addEventListener('click', () => { hidePreview(); cancelGraphSim(); saveGraphPositions(nodes); notesGraph = false; renderBoard(); });
   if (!svg) { refreshIcons(); return; }
-  const lineEls = [...svg.querySelectorAll('.graph-edge')];
+  const edgeEls = [...svg.querySelectorAll('.graph-edge-g')].map(g => ({ g: g, line: g.querySelector('.graph-edge'), aEnd: g.querySelector('.ga-end'), aStart: g.querySelector('.ga-start') }));
   const nodeEls = {}; svg.querySelectorAll('.graph-node').forEach(g => { nodeEls[g.getAttribute('data-graph-note')] = g; });
 
   // ---- viewport, zoom (animated), labels ----
@@ -3106,24 +3110,36 @@ function renderNotesGraph(board) {
   }
   function clientToWorld(cx, cy) { const rect = svg.getBoundingClientRect(); const vbX = (cx - rect.left) / rect.width * W, vbY = (cy - rect.top) / rect.height * H; return { x: (vbX - graphPanX) / graphZoom, y: (vbY - graphPanY) / graphZoom }; }
 
-  // ---- painting (with optional arrow shortening) ----
+  // ---- painting: line per pair + explicit arrowhead polygons ----
   function rOf(n) { return n.r || 10; }
+  function arrowPts(bx, by, ux, uy, len) {
+    // base sits at (bx,by); tip extends along (ux,uy) by len; isoceles, width 0.46*len each side
+    const tx = bx + ux * len, ty = by + uy * len;
+    const px = -uy, py = ux, w = len * 0.46;
+    return tx.toFixed(1) + ',' + ty.toFixed(1) + ' ' + (bx + px * w).toFixed(1) + ',' + (by + py * w).toFixed(1) + ' ' + (bx - px * w).toFixed(1) + ',' + (by - py * w).toFixed(1);
+  }
   function paintPositions() {
     nodes.forEach(n => { const g = nodeEls[n.id]; if (g) g.setAttribute('transform', 'translate(' + n.x.toFixed(1) + ',' + n.y.toFixed(1) + ')'); });
-    edges.forEach((e, i) => {
-      const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]], ln = lineEls[i]; if (!ln || !a || !b) return;
-      let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+    pairs.forEach((p, i) => {
+      const a = nodes[idIndex[p.a]], b = nodes[idIndex[p.b]], el = edgeEls[i]; if (!el || !a || !b) return;
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, ux = dx / d, uy = dy / d;
+      let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y, arA = 0, arB = 0;
       if (graphArrows) {
-        const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 0.01, ux = dx / d, uy = dy / d;
-        let offA = rOf(a) + 2, offB = rOf(b) + 10;
-        const room = d - 4;
-        if (offA + offB > room && room > 0) { const f = room / (offA + offB); offA *= f; offB *= f; }
-        x1 += ux * offA; y1 += uy * offA; x2 -= ux * offB; y2 -= uy * offB;
+        const AR = 9;
+        let gapA = rOf(a) + 1.5, gapB = rOf(b) + 1.5;
+        arA = p.ba ? AR : 0; arB = p.ab ? AR : 0;
+        let total = gapA + arA + gapB + arB;
+        const room = d - 2;
+        if (total > room && room > 0) { const f = room / total; gapA *= f; arA *= f; gapB *= f; arB *= f; }
+        x1 = a.x + ux * (gapA + arA); y1 = a.y + uy * (gapA + arA);
+        x2 = b.x - ux * (gapB + arB); y2 = b.y - uy * (gapB + arB);
       }
-      ln.setAttribute('x1', x1.toFixed(1)); ln.setAttribute('y1', y1.toFixed(1)); ln.setAttribute('x2', x2.toFixed(1)); ln.setAttribute('y2', y2.toFixed(1));
+      el.line.setAttribute('x1', x1.toFixed(1)); el.line.setAttribute('y1', y1.toFixed(1));
+      el.line.setAttribute('x2', x2.toFixed(1)); el.line.setAttribute('y2', y2.toFixed(1));
+      el.aEnd.setAttribute('points', arB > 0.5 ? arrowPts(x2, y2, ux, uy, arB) : '');
+      el.aStart.setAttribute('points', arA > 0.5 ? arrowPts(x1, y1, -ux, -uy, arA) : '');
     });
   }
-  function setArrowMarkers() { lineEls.forEach(ln => { if (graphArrows) ln.setAttribute('marker-end', 'url(#garrow)'); else ln.removeAttribute('marker-end'); }); paintPositions(); }
 
   // ---- emphasis: hover/selection neighborhood + search ----
   let hoverId = null;
@@ -3138,14 +3154,13 @@ function renderNotesGraph(board) {
       g.classList.toggle('dim', st === 'dim');
       g.classList.toggle('hl', st === 'hl');
     });
-    edges.forEach((e, i) => {
-      const ln = lineEls[i]; if (!ln) return;
+    pairs.forEach((p, i) => {
+      const el = edgeEls[i]; if (!el) return;
       let st = 'norm';
-      if (focus) st = (e[0] === focus || e[1] === focus) ? 'hl' : 'dim';
+      if (focus) st = (p.a === focus || p.b === focus) ? 'hl' : 'dim';
       else if (q) st = 'dim';
-      ln.classList.toggle('dim', st === 'dim');
-      ln.classList.toggle('hl', st === 'hl');
-      if (graphArrows) ln.setAttribute('marker-end', st === 'hl' ? 'url(#garrowhl)' : 'url(#garrow)');
+      el.g.classList.toggle('dim', st === 'dim');
+      el.g.classList.toggle('hl', st === 'hl');
     });
   }
 
@@ -3180,7 +3195,7 @@ function renderNotesGraph(board) {
       const d = Math.sqrt(d2), f = REP / d2, ux = dx / d, uy = dy / d;
       nodes[i].fx += ux * f; nodes[i].fy += uy * f; nodes[j].fx -= ux * f; nodes[j].fy -= uy * f;
     }
-    edges.forEach(e => { const a = nodes[idIndex[e[0]]], b = nodes[idIndex[e[1]]]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = (d - DIST) * 0.05, ux = dx / d, uy = dy / d; a.fx += ux * f; a.fy += uy * f; b.fx -= ux * f; b.fy -= uy * f; });
+    pairs.forEach(p => { const a = nodes[idIndex[p.a]], b = nodes[idIndex[p.b]]; if (!a || !b) return; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = (d - DIST) * 0.05, ux = dx / d, uy = dy / d; a.fx += ux * f; a.fy += uy * f; b.fx -= ux * f; b.fy -= uy * f; });
     nodes.forEach(nn => { nn.fx += (W / 2 - nn.x) * GRAV; nn.fy += (H / 2 - nn.y) * GRAV; });
     nodes.forEach(nn => { if (nn.pinned) { nn.vx = 0; nn.vy = 0; return; } nn.vx = (nn.vx + nn.fx) * 0.8; nn.vy = (nn.vy + nn.fy) * 0.8; nn.vx = Math.max(-45, Math.min(45, nn.vx)); nn.vy = Math.max(-45, Math.min(45, nn.vy)); nn.x += nn.vx * alpha; nn.y += nn.vy * alpha; });
   }
@@ -3222,7 +3237,7 @@ function renderNotesGraph(board) {
   }
 
   // ---- initial paint ----
-  applyVp(); setArrowMarkers(); applyEmphasis(); ensureLoop();
+  applyVp(); paintPositions(); applyEmphasis(); ensureLoop();
   setTimeout(fitView, 80);
 
   // ---- pointer interactions ----
@@ -3290,7 +3305,7 @@ function renderNotesGraph(board) {
   if (physBtn && physMenu) physBtn.addEventListener('click', e => { e.stopPropagation(); physMenu.hidden = !physMenu.hidden; });
   board.querySelectorAll('[data-gphys]').forEach(sl => sl.addEventListener('input', () => { graphPhysics[sl.dataset.gphys] = parseFloat(sl.value); saveGraphPhys(); alpha = Math.max(alpha, 0.5); ensureLoop(); }));
   const arrowsCb = document.getElementById('graph-arrows-cb');
-  if (arrowsCb) arrowsCb.addEventListener('change', () => { graphArrows = arrowsCb.checked; saveGraphPhys(); setArrowMarkers(); applyEmphasis(); });
+  if (arrowsCb) arrowsCb.addEventListener('change', () => { graphArrows = arrowsCb.checked; saveGraphPhys(); paintPositions(); });
   const relayoutBtn = document.getElementById('graph-relayout');
   if (relayoutBtn) relayoutBtn.addEventListener('click', () => { nodes.forEach(nd => { const ang = Math.random() * Math.PI * 2, rad = 60 + Math.random() * 180; nd.x = W / 2 + Math.cos(ang) * rad; nd.y = H / 2 + Math.sin(ang) * rad; nd.vx = 0; nd.vy = 0; }); alpha = 1; ensureLoop(); setTimeout(fitView, 700); });
   const depthSel = document.getElementById('graph-depth');
